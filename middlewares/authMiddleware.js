@@ -9,6 +9,7 @@ exports.authenticate = async (req, res, next) => {
       .status(401)
       .json({ message: "Access denied. No token provided." });
   }
+
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = await User.findByPk(decoded.id);
@@ -16,14 +17,16 @@ exports.authenticate = async (req, res, next) => {
       return res.status(401).json({ message: "Invalid token." });
     }
     next();
+
   } catch (err) {
     console.log(err);
-    res.status(400).json({ message: "Invalid token." });
+    res.status(400).json({ message: "Invaliddd token." });
   }
 };
 
+
 exports.generateToken = (user) => {
-  return jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
+  return jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, {
     expiresIn: "30d",
   });
 };
@@ -36,3 +39,5 @@ exports.authorize = (roles) => {
     next();
   };
 };
+
+
