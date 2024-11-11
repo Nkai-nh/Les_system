@@ -1,11 +1,11 @@
 const sequelize = require("../config/database");
-const momo = require("../config/momo");
 const Order = require("../models/order");
 const OrderDetail = require("../models/orderDetail");
 const { formatResponse } = require("../utils/responseFormatter");
 const { v4: uuidv4 } = require("uuid"); // Thư viện tạo ID duy nhất cho đơn hàng
 const crypto = require("crypto-js");
 const axios = require("axios");
+const Product = require("../models/product");
 
 exports.getAllOrders = async (req, res, next) => {
   try {
@@ -22,62 +22,60 @@ exports.getAllOrders = async (req, res, next) => {
 exports.addOrder = async (req, res, next) => {
   const transaction = await sequelize.transaction();
   const user_id = req.user.id;
+  console.log(req.body);
   try {
-    const { paymentMethods, name, phone, address, note, orderDetails } =
-      req.body;
+    const { paymentMethods, name, phone, address, note, total,orderDetails } = req.body;
+
     // check paymentMethods is cod or online
     let isPayment = false;
     if (paymentMethods === "COD") {
       isPayment = true;
     }
+
     // Tạo đơn hàng mới
-    const orderId = uuidv4();
-    const newOrder = await Order.create(
+    const order = await Order.create(
       {
-        id: orderId,
+        id: uuidv4(),
+        user_id,
         paymentMethods,
         name,
         phone,
+        total,
         address,
-        is_payment: isPayment,
-        orderStatus: "progress",
-        cancel_at: null,
-        total: orderDetails.reduce(
-          (acc, detail) => acc + detail.price * detail.quantity,
-          0
-        ),
         note,
-        user_id,
+        isPayment,
       },
       { transaction }
     );
 
-    // Thêm các chi tiết đơn hàng
-    const orderDetailPromises = orderDetails.map((detail) => {
-      return OrderDetail.create(
+    // Kiểm tra và thêm chi tiết đơn hàng
+    for (const detail of orderDetails) {
+      const product = await Product.findByPk(detail.product_id);
+      if (!product) {
+        await transaction.rollback();
+        return res
+          .status(400)
+          .json(formatResponse(`Product with id ${detail.product_id} not found`, null, false));
+      }
+
+      await OrderDetail.create(
         {
+          order_id: order.id,
           product_id: detail.product_id,
-          order_id: orderId,
           quantity: detail.quantity,
-          price: detail.price,
+          price: product.price,
         },
         { transaction }
       );
-    });
+    }
 
-    await Promise.all(orderDetailPromises);
-
-    // Lưu giao dịch
     await transaction.commit();
-
-    res.status(201).json(formatResponse("Order added successfully", newOrder));
+    res.status(201).json(formatResponse("Order added successfully", order));
   } catch (error) {
-    // Hủy giao dịch nếu có lỗi
     await transaction.rollback();
     next(error);
   }
 };
-
 exports.paymentWithMomo = async (req, res, next) => {
   const { orderId ,total} = req.body;
   var partnerCode = "MOMOBKUN20180529";

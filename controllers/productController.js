@@ -4,7 +4,7 @@ const Product = require("../models/product");
 const Image = require("../models/image");
 const ProductReview = require("../models/productReview");
 const Variant = require("../models/variant");
- 
+
 exports.getAllProducts = async (req, res, next) => {
   try {
     const {
@@ -41,7 +41,7 @@ exports.getAllProducts = async (req, res, next) => {
       include: [
         {
           model: Variant,
-          as: 'variants',
+          as: "variants",
           through: { attributes: [] },
         },
         {
@@ -73,12 +73,13 @@ exports.getAllProducts = async (req, res, next) => {
 exports.getProductById = async (req, res, next) => {
   try {
     const { id } = req.params;
+  
 
     const product = await Product.findByPk(id, {
       include: [
         {
           model: Variant,
-          as: 'variants',
+          as: "variants",
           through: { attributes: [] },
         },
         {
@@ -105,3 +106,16 @@ exports.getProductById = async (req, res, next) => {
     next(error);
   }
 };
+exports.monitorInventory = async (req, res, next) => {
+  try {
+    const products = await Product.findAll({
+      order: [["quantity", "ASC"]],
+    });
+    res
+      .status(200)
+      .json(formatResponse("Inventory monitored successfully", products));
+  } catch (error) {
+    next(error);
+  }
+};
+
