@@ -9,6 +9,7 @@ const Product = sequelize.define(
       type: DataTypes.STRING(50),
       primaryKey: true,
       allowNull: false,
+      defaultValue: DataTypes.UUIDV4,
     },
     category_id: {
       type: DataTypes.STRING(50),
@@ -50,6 +51,7 @@ const Product = sequelize.define(
       type: DataTypes.DATE,
       allowNull: true,
     },
+    
   },
   {
     tableName: "Products",

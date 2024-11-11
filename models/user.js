@@ -41,7 +41,7 @@ const User = sequelize.define(
     role: {
       type: DataTypes.STRING(50),
       allowNull: true,
-      defaultValue: "admin",
+      defaultValue: "user",
     },
     subject: {
       type: DataTypes.STRING(50),
@@ -50,16 +50,6 @@ const User = sequelize.define(
     default_address: {
       type: DataTypes.STRING(50),
       allowNull: true,
-    },
-    created_at: {
-      type: DataTypes.DATE,
-      allowNull: true,
-      defaultValue: DataTypes.NOW
-    },
-    updated_at: {
-      type: DataTypes.DATE,
-      allowNull: true,
-      defaultValue: DataTypes.NOW
     },
   },
   {

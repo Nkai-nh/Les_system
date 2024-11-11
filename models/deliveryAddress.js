@@ -27,8 +27,7 @@ const DeliveryAddress = sequelize.define('DeliveryAddress', {
     ward: {
         type: DataTypes.STRING(50),
         allowNull: true
-    },
-    
+    }
 }, {
     tableName: 'DeliveryAddresses',
     timestamps: false

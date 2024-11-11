@@ -37,28 +37,13 @@ const Order = sequelize.define(
         "pending",
         "shipping",
         "completed",
+        "confirmed",
+        "resolved",
         "canceled"
       ),
       allowNull: false,
+      defaultValue: "pending",
     },
-    momo_transactionNo: {
-      type: DataTypes.STRING(255),
-      allowNull: true,
-    },
-    momo_OrderInfo: {
-      type: DataTypes.STRING(255),
-      allowNull: true,
-    },
-    momo_CardType: {
-      type: DataTypes.STRING(255),
-      allowNull: true,
-    },
-
-    momo_BankCode: {
-      type: DataTypes.STRING(255),
-      allowNull: true,
-    },
-
     cancel_at: {
       type: DataTypes.DATE,
       allowNull: true,
@@ -75,17 +60,6 @@ const Order = sequelize.define(
       type: DataTypes.STRING(50),
       allowNull: false,
     },
-    created_at: {
-      type: DataTypes.DATE,
-      allowNull: true,
-      defaultValue: DataTypes.NOW
-    },
-    updated_at: {
-      type: DataTypes.DATE,
-      allowNull: true,
-      defaultValue: DataTypes.NOW
-    },
-
   },
   {
     tableName: "Orders",

@@ -22,14 +22,9 @@ const Category = sequelize.define('Category', {
     },
     created_at: {
         type: DataTypes.DATE,
-        allowNull: true,
-        defaultValue: DataTypes.NOW
-      },
-      updated_at: {
-        type: DataTypes.DATE,
-        allowNull: true,
-        defaultValue: DataTypes.NOW
-      },
+        allowNull: false,
+        defaultValue : DataTypes.NOW
+    },
 }, {
     tableName: 'Categories',
     timestamps: false,

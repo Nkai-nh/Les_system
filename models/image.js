@@ -7,8 +7,8 @@ const Image = sequelize.define(
   {
     id: {
       type: DataTypes.STRING(50),
-       
       primaryKey: true,
+      defaultValue: DataTypes.UUIDV4,
       allowNull: false,
     },
     product_id: {
@@ -19,7 +19,6 @@ const Image = sequelize.define(
       type: DataTypes.STRING(255),
       allowNull: true,
     },
-
   },
   {
     tableName: "Images",
