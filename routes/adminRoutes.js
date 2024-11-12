@@ -34,4 +34,5 @@ router.get('/reports/sales/yearly', authenticate, authorize('admin'), adminContr
 
 router.get('/reports/activity', authenticate, authorize('admin'), adminController.getActivityReport);
 
+
 module.exports = router;

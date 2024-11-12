@@ -4,6 +4,7 @@ const Order = require('../models/order');
 const { Op, Sequelize } = require('sequelize');
 const { formatResponse } = require("../utils/responseFormatter");
 const OrderDetail = require('../models/orderDetail');
+const Image = require('../models/image');
 
 //////----------Quản lý người dùng-------------////
 
@@ -91,8 +92,13 @@ async function updateUser(req, res) {
 // Lấy tất cả sản phẩm
 async function getAllProducts(req, res) {
     try {
-        const products = await Product.findAll();
-        res.json(products);
+        const products = await Product.findAll({
+            include: [
+                {model: Image,
+                as: 'images',}
+            ]
+        });
+        res.status(200).json(products);
     } catch (error) {
         res.status(500).json({ message: 'Lỗi khi lấy danh sách sản phẩm', error });
     }
@@ -101,15 +107,39 @@ async function getAllProducts(req, res) {
 // Thêm sản phẩm mới
 async function addProduct(req, res) {
     try {
-        const {id, prod_name, category_id, prod_description, price, cost, quantity, prod_percent, best_seller, ratings, expiration_date } = req.body;
+        const {category_id,prod_name,prod_description,price,cost,quantity,prod_percent,best_seller,ratings,expiration_date,images } = req.body;
 
-        const newProduct = await Product.create({
-            id,prod_name, category_id, prod_description, price, cost, quantity, prod_percent, best_seller, ratings, expiration_date
+        const newProduct = await Product.create({category_id,prod_name,prod_description,price,cost,quantity,prod_percent,best_seller,ratings,expiration_date,});
+
+                const createdImages = [];
+
+        // Kiểm tra và thêm hình ảnh nếu có
+        if (images && images.length > 0) {
+            const uniqueImages = [...new Set(images)];
+
+            const imagePromises = uniqueImages.map(async url => {
+                const newImage = await Image.create({
+                    product_id: newProduct.id,
+                    url,
+                });
+                createdImages.push(newImage); // Lưu lại hình ảnh đã tạo
+            });
+            await Promise.all(imagePromises);
+        }
+
+        return res.status(201).json({
+            message: "Sản phẩm đã được tạo thành công",
+            product: {
+                ...newProduct.toJSON(), // Chuyển đổi thành đối tượng JSON
+                images: createdImages // Thêm hình ảnh vào phản hồi
+            },
         });
-
-        res.status(201).json({ message: 'Thêm sản phẩm thành công', product: newProduct });
     } catch (error) {
-        res.status(500).json({ message: 'Lỗi khi thêm sản phẩm', error });
+        console.error(error);
+        return res.status(500).json({
+            message: "Đã xảy ra lỗi khi tạo sản phẩm",
+            error: error.message,
+        });
     }
 }
 
@@ -117,32 +147,104 @@ async function addProduct(req, res) {
 async function updateProduct(req, res) {
     try {
         const productId = req.params.id;
-        const { prod_name, category_id, prod_description, price, cost, quantity, prod_percent, best_seller, ratings, expiration_date } = req.body;
+        const {
+            prod_name,
+            category_id,
+            prod_description,
+            price,
+            cost,
+            quantity,
+            prod_percent,
+            best_seller,
+            ratings,
+            expiration_date,
+            images
+        } = req.body;
 
+        // Tìm sản phẩm theo ID
         const product = await Product.findByPk(productId);
         if (!product) {
             return res.status(404).json({ message: 'Sản phẩm không tồn tại' });
         }
 
-        await product.update({ prod_name, category_id, prod_description, price, cost, quantity, prod_percent, best_seller, ratings, expiration_date });
-        res.json({ message: 'Cập nhật sản phẩm thành công', product });
+        // Cập nhật thông tin sản phẩm
+        await product.update({
+            prod_name,
+            category_id,
+            prod_description,
+            price,
+            cost,
+            quantity,
+            prod_percent,
+            best_seller,
+            ratings,
+            expiration_date
+        });
+
+        // Cập nhật hình ảnh nếu có
+        if (images && images.length > 0) {
+            // Xóa hình ảnh cũ
+            await Image.destroy({
+                where: { product_id: productId }
+            });
+
+            // Thêm hình ảnh mới
+            await Promise.all(images.map(image =>
+                Image.create({ product_id: productId, url: image })
+            ));
+        }
+
+        // Lấy lại sản phẩm cùng với hình ảnh
+        const updatedProduct = await Product.findByPk(productId, {
+            include: [{ model: Image, as: 'images' }] // Đảm bảo rằng mô hình Image đã được định nghĩa đúng
+        });
+
+        res.json({
+            message: 'Cập nhật sản phẩm thành công',
+            product: updatedProduct
+        });
     } catch (error) {
-        res.status(500).json({ message: 'Lỗi khi cập nhật sản phẩm', error });
+        console.error(error); // Ghi log lỗi để dễ dàng debug
+        res.status(500).json({ message: 'Lỗi khi cập nhật sản phẩm', error: error.message });
     }
 }
 
+
+
 // Xoá sản phẩm
 async function deleteProduct(req, res) {
+    const productId = req.params.id;
     try {
-        const productId = req.params.id;
-        const product = await Product.findByPk(productId);
+        // Xóa tất cả các bản ghi liên quan trong bảng orderdetails
+        await OrderDetail.destroy({
+            where: { product_id: productId }
+        });
+        // Kiểm tra xem sản phẩm có hình ảnh hay không
+        const images = await Image.findAll({
+            where: { product_id: productId }
+        });
 
-        if (!product) {
-            return res.status(404).json({ message: 'Sản phẩm không tồn tại' });
+        // Nếu có hình ảnh, xóa chúng
+        if (images.length > 0) {
+            await Image.destroy({
+                where: { product_id: productId }
+            });
         }
 
-        await product.destroy();
-        res.json({ message: 'Xoá sản phẩm thành công' });
+        // Xóa sản phẩm
+        const deletedProduct = await Product.destroy({
+            where: { id: productId }
+        });
+
+        if (!deletedProduct) {
+            return res.status(404).json({
+                message: "Sản phẩm không tồn tại"
+            });
+        }
+
+        return res.status(200).json({
+            message: "Sản phẩm đã được xóa thành công"
+        });
     } catch (error) {
         res.status(500).json({ message: 'Lỗi khi xoá sản phẩm', error });
     }
@@ -397,6 +499,7 @@ async function getActivityReport(req, res) {
         res.status(500).json({ message: 'ERROR', error: error.message });
     }
 }
+
 
 
 module.exports = {

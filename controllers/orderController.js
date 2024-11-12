@@ -23,16 +23,29 @@ exports.addOrder = async (req, res, next) => {
   const transaction = await sequelize.transaction();
   const user_id = req.user.id;
   console.log(req.body);
-  try {
-    const { paymentMethods, name, phone, address, note, total,orderDetails } = req.body;
 
-    // check paymentMethods is cod or online
-    let isPayment = false;
-    if (paymentMethods === "COD") {
-      isPayment = true;
+  try {
+    const { paymentMethods, name, phone, address, note, orderDetails } = req.body;
+
+    const isPayment = paymentMethods === "COD"; 
+
+    let total = 0;
+    for (const detail of orderDetails) {
+      const product = await Product.findByPk(detail.product_id);
+      if (!product) {
+        await transaction.rollback();
+        return res.status(400).json(formatResponse(`Product with id ${detail.product_id} not found`, null, false));
+      }
+
+      if (detail.quantity > product.quantity) {
+        await transaction.rollback();
+        return res.status(400).json(formatResponse(`Not enough quantity for product id ${detail.product_id}`, null, false));
+      }
+
+      total += product.price * detail.quantity;
     }
 
-    // Tạo đơn hàng mới
+  
     const order = await Order.create(
       {
         id: uuidv4(),
@@ -48,25 +61,20 @@ exports.addOrder = async (req, res, next) => {
       { transaction }
     );
 
-    // Kiểm tra và thêm chi tiết đơn hàng
-    for (const detail of orderDetails) {
-      const product = await Product.findByPk(detail.product_id);
-      if (!product) {
-        await transaction.rollback();
-        return res
-          .status(400)
-          .json(formatResponse(`Product with id ${detail.product_id} not found`, null, false));
-      }
 
+    for (const detail of orderDetails) {
       await OrderDetail.create(
         {
           order_id: order.id,
           product_id: detail.product_id,
           quantity: detail.quantity,
-          price: product.price,
+          price: (await Product.findByPk(detail.product_id)).price,
         },
         { transaction }
       );
+
+      const product = await Product.findByPk(detail.product_id);
+      await product.update({ quantity: product.quantity - detail.quantity }, { transaction });
     }
 
     await transaction.commit();
@@ -76,6 +84,7 @@ exports.addOrder = async (req, res, next) => {
     next(error);
   }
 };
+
 exports.paymentWithMomo = async (req, res, next) => {
   const { orderId ,total} = req.body;
   var partnerCode = "MOMOBKUN20180529";
