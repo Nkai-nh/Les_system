@@ -5,6 +5,7 @@ const { Op, Sequelize } = require('sequelize');
 const { formatResponse } = require("../utils/responseFormatter");
 const OrderDetail = require('../models/orderDetail');
 const Image = require('../models/image');
+const sequelize = require('../config/database');
 
 //////----------Quản lý người dùng-------------////
 
@@ -501,6 +502,18 @@ async function getActivityReport(req, res) {
 }
 
 
+// Function lấy tất cả các bảng
+const getAllTables = async (req, res) => {
+    try {
+        const [results] = await sequelize.query("SHOW TABLES");
+        const tables = results.map(row => Object.values(row)[0]); // Lấy tên bảng từ kết quả
+        res.json(tables);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Có lỗi xảy ra khi lấy danh sách bảng.' });
+    }
+};
+
 
 module.exports = {
     getAllUsers,
@@ -519,5 +532,6 @@ module.exports = {
     getAllOrders,
     getOrderById,
     updateOrderStatus,
-    deleteOrder
+    deleteOrder,
+    getAllTables
 };

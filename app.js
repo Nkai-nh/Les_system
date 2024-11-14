@@ -17,7 +17,11 @@ const { authenticate } = require("./middlewares/authMiddleware");
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:3000', // Thay 'http://localhost:5000' bằng URL của frontend
+  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Các phương thức HTTP được phép
+  allowedHeaders: ['Content-Type', 'Authorization'] // Các headers được phép
+}));
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));

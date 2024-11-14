@@ -33,6 +33,7 @@ router.get('/reports/sales/quarterly', authenticate, authorize('admin'), adminCo
 router.get('/reports/sales/yearly', authenticate, authorize('admin'), adminController.getYearlySalesReport);
 
 router.get('/reports/activity', authenticate, authorize('admin'), adminController.getActivityReport);
+router.get('/table', authenticate, authorize('admin'), adminController.getAllTables);
 
 
 module.exports = router;
