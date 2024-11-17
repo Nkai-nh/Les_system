@@ -1,6 +1,8 @@
 const express = require('express');
 const { authenticate, authorize} = require('../middlewares/authMiddleware');
 const adminController = require('../controllers/adminController');
+const upload = require('../middlewares/uploadMiddleware');
+
 
 const router = express.Router();
 
@@ -8,7 +10,7 @@ const router = express.Router();
 
 
 // quản lý uswer
-router.get('/users', authenticate, authorize('admin'), adminController.getAllUsers);
+router.get('/users',authenticate, authorize('admin'), adminController.getAllUsers);
 router.put('/users/:id', authenticate, authorize('admin'), adminController.updateUserRole);
 router.delete('/users/:id', authenticate, authorize('admin'), adminController.deleteUser);
 router.put('/users-update/:id', authenticate, authorize('admin'), adminController.updateUser);
@@ -16,8 +18,8 @@ router.put('/users-update/:id', authenticate, authorize('admin'), adminControlle
 
 // quản lý product
 router.get('/products', authenticate, authorize('admin'), adminController.getAllProducts);
-router.post('/products', authenticate, authorize('admin'), adminController.addProduct);
-router.put('/products/:id', authenticate, authorize('admin'), adminController.updateProduct);
+router.post('/products', upload.array('images',5), authenticate, authorize('admin'), adminController.addProduct);
+router.put('/products/:id', upload.array('images', 5), authenticate, authorize('admin'), adminController.updateProduct);
 router.delete('/products/:id', authenticate, authorize('admin'), adminController.deleteProduct);
 
 // Quản lý đơn hàng

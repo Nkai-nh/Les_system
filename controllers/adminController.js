@@ -13,8 +13,8 @@ const sequelize = require('../config/database');
 async function getAllUsers(req, res) {
     try {
         const users = await User.findAll({
-            attributes: ['id', 'name', 'email', 'role', 'created_at'],
-        });
+            raw: true, // Trả về dữ liệu thuần (JSON)
+        }); 
         res.status(200).json({
             success: true,
             data: users,
@@ -105,49 +105,160 @@ async function getAllProducts(req, res) {
     }
 }
 
-// Thêm sản phẩm mới
-async function addProduct(req, res) {
-    try {
-        const {category_id,prod_name,prod_description,price,cost,quantity,prod_percent,best_seller,ratings,expiration_date,images } = req.body;
+// async function addProduct(req, res) {
+//     try {
+//         const { category_id, prod_name, prod_description, price, cost, quantity, prod_percent, best_seller, ratings, expiration_date, } = req.body;
 
-        const newProduct = await Product.create({category_id,prod_name,prod_description,price,cost,quantity,prod_percent,best_seller,ratings,expiration_date,});
+//         // Kiểm tra đầu vào
+//         if (!category_id || !prod_name || !price || !quantity) {
+//             if (req.files) {
+//                 deleteFiles(req.files);
+//             }
+//             return res.status(400).json({
+//                 message: "Thiếu thông tin bắt buộc",
+//             });
+//         }
+//         if (req.files.length < 1) {
+//             return res
+//                 .status(400)
+//                 .json(formatResponse("Please provide at least one image", null, false
+//                 ));
+//         }
 
-                const createdImages = [];
+//         // Kiểm tra và xử lý hình ảnh
+//         const images = req.files;
+//         let createdImages = [];
+//         if (images && images.length > 0) {
+//             // Kiểm tra định dạng tệp
+//             const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif'];
+//             createdImages = await Promise.all(
+//                 images.map(async (file) => {
+//                     const fileExtension = file.originalname.split('.').pop().toLowerCase();
+//                     if (!allowedExtensions.includes(fileExtension)) {
+//                         throw new Error(`Định dạng tệp ${fileExtension} không được hỗ trợ.`);
+//                     }
+//                     const newImage = await Image.create({
+//                         product_id: null, // Sẽ được cập nhật sau khi tạo sản phẩm
+//                         url: `uploads/${file.filename}`,
+//                     });
+//                     return {
+//                         id: newImage.id,
+//                         url: newImage.url,
+//                     };
+//                 })
+//             );
+//         }
 
-        // Kiểm tra và thêm hình ảnh nếu có
-        if (images && images.length > 0) {
-            const uniqueImages = [...new Set(images)];
+//         // Tạo sản phẩm mới
+//         const newProduct = await Product.create({
+//             category_id,
+//             prod_name,
+//             prod_description,
+//             price,
+//             cost,
+//             quantity,
+//             prod_percent,
+//             best_seller,
+//             ratings,
+//             expiration_date,
+//         });
 
-            const imagePromises = uniqueImages.map(async url => {
-                const newImage = await Image.create({
-                    product_id: newProduct.id,
-                    url,
-                });
-                createdImages.push(newImage); // Lưu lại hình ảnh đã tạo
-            });
-            await Promise.all(imagePromises);
-        }
+//         // Cập nhật product_id cho các hình ảnh
+//         await Promise.all(
+//             createdImages.map(async (image) => {
+//                 const imageObj = await Image.findByPk(image.id);
+//                 imageObj.product_id = newProduct.id;
+//                 await imageObj.save();
+//             })
+//         );
 
-        return res.status(201).json({
-            message: "Sản phẩm đã được tạo thành công",
-            product: {
-                ...newProduct.toJSON(), // Chuyển đổi thành đối tượng JSON
-                images: createdImages // Thêm hình ảnh vào phản hồi
-            },
-        });
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({
-            message: "Đã xảy ra lỗi khi tạo sản phẩm",
-            error: error.message,
-        });
-    }
-}
+//         // Trả về phản hồi
+//         return res.status(201).json({
+//             message: "Sản phẩm đã được tạo thành công",
+//             product: {
+//                 ...newProduct.toJSON(),
+//                 images: createdImages,
+//             },
+//         });
+//     } catch (error) {
+//         console.error(error);
+//         let errorMessage = "Đã xảy ra lỗi khi tạo sản phẩm";
+//         let statusCode = 500;
+
+//         // Xử lý lỗi tải lên tệp
+//         if (error.message.includes("Định dạng tệp")) {
+//             errorMessage = error.message;
+//             statusCode = 400;
+//         }
+
+//         return res.status(statusCode).json({
+//             message: errorMessage,
+//             error: error.message,
+//         });
+//     }
+// }
+
+
 
 // Chỉnh sửa sản phẩm
+
+const addProduct = async (req, res) => {
+    try {
+        // Lấy dữ liệu từ request body
+        const { category_id, prod_name, prod_description, price, cost, quantity, prod_percent, best_seller, ratings, expiration_date } = req.body;
+
+        // Kiểm tra nếu có thiếu dữ liệu quan trọng
+        if (!prod_name || !price || !cost || !quantity) {
+            return res.status(400).json({ message: 'Thông tin sản phẩm không đầy đủ' });
+        }
+
+        // Tạo sản phẩm mới
+        const newProduct = await Product.create({
+            category_id,
+            prod_name,
+            prod_description,
+            price,
+            cost,
+            quantity,
+            prod_percent,
+            best_seller,
+            ratings,
+            expiration_date,
+        });
+
+
+        // Kiểm tra nếu có ảnh tải lên
+        if (req.files && req.files.length > 0) {
+            console.log('Các ảnh đã tải lên:', req.files);
+            // Lưu thông tin hình ảnh
+            const imagePromises = req.files.map(async (file) => {
+                const imageUrl = file.path;  // Đường dẫn đến ảnh đã tải lên
+                return await Image.create({
+                    product_id: newProduct.id,  // Liên kết ảnh với sản phẩm
+                    url: imageUrl,
+                });
+            });
+
+            // Chờ tất cả các ảnh được lưu vào cơ sở dữ liệu
+            await Promise.all(imagePromises);
+        } else {
+            console.log('Không có ảnh nào được tải lên');
+        }
+
+        // Trả về thông báo thành công
+        res.status(201).json({
+            message: 'Sản phẩm đã được thêm thành công!',
+            product: newProduct,
+        });
+    } catch (error) {
+        console.error('Lỗi khi thêm sản phẩm:', error);
+        res.status(500).json({ message: 'Lỗi server khi thêm sản phẩm' });
+    }
+};
 async function updateProduct(req, res) {
     try {
         const productId = req.params.id;
+        console.log('productID',productId)
         const {
             prod_name,
             category_id,
@@ -159,8 +270,10 @@ async function updateProduct(req, res) {
             best_seller,
             ratings,
             expiration_date,
-            images
         } = req.body;
+
+        const images = req.files; // Các file ảnh sẽ được lưu vào req.files
+        console.log('Dữ liệu hình ảnh mới:', images);
 
         // Tìm sản phẩm theo ID
         const product = await Product.findByPk(productId);
@@ -182,22 +295,23 @@ async function updateProduct(req, res) {
             expiration_date
         });
 
-        // Cập nhật hình ảnh nếu có
+        // Kiểm tra nếu có ảnh mới
         if (images && images.length > 0) {
             // Xóa hình ảnh cũ
-            await Image.destroy({
-                where: { product_id: productId }
-            });
+            await Image.destroy({ where: { product_id: productId } });
 
-            // Thêm hình ảnh mới
-            await Promise.all(images.map(image =>
-                Image.create({ product_id: productId, url: image })
-            ));
+            // Thêm hình ảnh mới vào cơ sở dữ liệu
+            await Promise.all(images.map(image => {
+                return Image.create({
+                    product_id: productId,
+                    url: image.path, // Lưu đường dẫn tới file ảnh đã tải lên
+                });
+            }));
         }
 
-        // Lấy lại sản phẩm cùng với hình ảnh
+        // Lấy lại sản phẩm sau khi cập nhật, bao gồm cả hình ảnh
         const updatedProduct = await Product.findByPk(productId, {
-            include: [{ model: Image, as: 'images' }] // Đảm bảo rằng mô hình Image đã được định nghĩa đúng
+            include: [{ model: Image, as: 'images' }]
         });
 
         res.json({
@@ -205,12 +319,10 @@ async function updateProduct(req, res) {
             product: updatedProduct
         });
     } catch (error) {
-        console.error(error); // Ghi log lỗi để dễ dàng debug
+        console.error('Lỗi khi cập nhật sản phẩm:', error);
         res.status(500).json({ message: 'Lỗi khi cập nhật sản phẩm', error: error.message });
     }
 }
-
-
 
 // Xoá sản phẩm
 async function deleteProduct(req, res) {
