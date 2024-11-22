@@ -21,6 +21,9 @@ router.get('/products', authenticate, authorize('admin'), adminController.getAll
 router.post('/products', upload.array('images',5), authenticate, authorize('admin'), adminController.addProduct);
 router.put('/products/:id', upload.array('images', 5), authenticate, authorize('admin'), adminController.updateProduct);
 router.delete('/products/:id', authenticate, authorize('admin'), adminController.deleteProduct);
+router.post('/add-category', authenticate, authorize('admin'), adminController.addCategory);
+router.get('/getAll-category', authenticate, authorize('admin'), adminController.getAllCategory);
+router.delete('/delete-category/:category_id', authenticate, authorize('admin'), adminController.deleteCategory);
 
 // Quản lý đơn hàng
 router.get('/orders',authenticate, authorize('admin'), adminController.getAllOrders);

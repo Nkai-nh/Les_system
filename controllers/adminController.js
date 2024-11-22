@@ -5,6 +5,7 @@ const { Op, Sequelize } = require('sequelize');
 const { formatResponse } = require("../utils/responseFormatter");
 const OrderDetail = require('../models/orderDetail');
 const Image = require('../models/image');
+const Category = require('../models/category');
 const sequelize = require('../config/database');
 
 //////----------Quản lý người dùng-------------////
@@ -95,13 +96,20 @@ async function getAllProducts(req, res) {
     try {
         const products = await Product.findAll({
             include: [
-                {model: Image,
-                as: 'images',}
+                {
+                    model: Image,
+                    as: 'images', // Đảm bảo alias này cũng đúng
+                },
+                {
+                    model: Category,
+                    attributes: ['category_id', 'name'] // Lấy category_id và name
+                }
             ]
         });
         res.status(200).json(products);
     } catch (error) {
-        res.status(500).json({ message: 'Lỗi khi lấy danh sách sản phẩm', error });
+        console.error('Error fetching products:', error); // Log chi tiết lỗi
+        res.status(500).json({ message: 'Lỗi khi lấy danh sách sản phẩm', error: error.message });
     }
 }
 
@@ -363,36 +371,147 @@ async function deleteProduct(req, res) {
     }
 }
 
+//add cateegory
+const addCategory = async (req, res) => {
+    try {
+        const { category_id, name, description, slug } = req.body;
+
+        // Kiểm tra dữ liệu đầu vào
+        if (!category_id || !name) {
+            return res.status(400).json({ message: 'category_id và name là bắt buộc.' });
+        }
+
+        // Tạo danh mục mới
+        const newCategory = await Category.create({
+            category_id,
+            name,
+            description,
+            slug,
+            created_at: new Date() // Hoặc bạn có thể bỏ qua nếu sử dụng defaultValue
+        });
+
+        return res.status(201).json(newCategory);
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: 'Có lỗi xảy ra khi thêm danh mục.' });
+    }
+};
+
+// get all category
+const getAllCategory = async (req, res) => {
+    try {
+        const categoriesWithProductCount = await Category.findAll({
+            attributes: [
+                'category_id',
+                'name',
+                'description',
+                [sequelize.fn('COUNT', sequelize.col('Products.category_id')), 'productCount']
+            ],
+            include: [{
+                model: Product,
+                attributes: [] // Không cần lấy thông tin sản phẩm
+            }],
+            group: ['Category.category_id'], // Nhóm theo category_id
+            raw: true // Trả về kết quả thô
+        });
+
+        return res.status(200).json(categoriesWithProductCount);
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: 'Có lỗi xảy ra khi lấy số lượng sản phẩm theo danh mục.' });
+    }
+};
+// delete category
+const deleteCategory = async (req, res) => {
+    const { category_id } = req.params;
+
+    try {
+        const deletedCategory = await Category.destroy({
+            where: { category_id }
+        });
+
+        if (deletedCategory) {
+            return res.status(200).json({ message: 'Danh mục đã được xóa thành công.' });
+        } else {
+            return res.status(404).json({ message: 'Danh mục không tồn tại.' });
+        }
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: 'Có lỗi xảy ra khi xóa danh mục.' });
+    }
+};
+
+
 
 ///////----------Quản lý Order ---------------/////
 // Lấy danh sách tất cả đơn hàng
-async function getAllOrders(req, res, next) {
-        try {
-            const orders = await Order.findAll();
-            res
-                .status(200)
-                .json(formatResponse("Orders retrieved successfully", orders));
-        } catch (error) {
-            next(error);
-        }
+async function getAllOrders(req, res) {
+    try {
+        // Lấy danh sách tất cả các đơn hàng, bao gồm chi tiết sản phẩm và thông tin người dùng
+        const orders = await Order.findAll({
+            include: [
+                {
+                    model: User,
+                    attributes: ["id", "name", "email", "phone"], // Chỉ lấy các trường cần thiết
+                },
+                {
+                    model: Product,
+                    as: "products", // Alias đã định nghĩa trong quan hệ
+                    through: {
+                        model: OrderDetail,
+                        attributes: ["quantity", "price"], // Lấy số lượng và giá của từng sản phẩm trong đơn hàng
+                    },
+                },
+            ],
+        });
 
-}
+        // Trả về danh sách đơn hàng
+        res.status(200).json({
+            success: true,
+            message: "Fetched all orders successfully",
+            data: orders,
+        });
+    } catch (error) {
+        console.error("Error fetching orders:", error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch orders",
+            error: error.message,
+        });
+    }
+};
 
 // Xem chi tiết một đơn hàng
+
 async function getOrderById(req, res) {
+    const { id } = req.params; // Get order ID from route params
     try {
-        const orderId = req.params.id;
-        const order = await Order.findByPk(orderId);
+        const order = await Order.findOne({
+            where: { id },
+            include: [
+                {
+                    model: Product,
+                    as: 'products',
+                    attributes: ['id', 'prod_name', 'price', 'quantity'],
+                    through: { attributes: ['quantity', 'price'] }, // Include OrderDetails fields
+                },
+                {
+                    model: User,
+                    attributes: ['name', 'email', 'phone'], // Include user info
+                },
+            ],
+        });
 
         if (!order) {
-            return res.status(404).json({ message: 'Đơn hàng không tồn tại' });
+            return res.status(404).json({ message: 'Order not found' });
         }
 
-        res.json(order);
+        res.status(200).json(order);
     } catch (error) {
-        res.status(500).json({ message: 'Lỗi khi lấy chi tiết đơn hàng', error });
+        console.error(error);
+        res.status(500).json({ message: 'Server error', error });
     }
-}
+};
 
 
 // Cập nhật trạng thái đơn hàng
@@ -645,5 +764,8 @@ module.exports = {
     getOrderById,
     updateOrderStatus,
     deleteOrder,
-    getAllTables
+    getAllTables,
+    addCategory,
+    getAllCategory,
+    deleteCategory
 };
