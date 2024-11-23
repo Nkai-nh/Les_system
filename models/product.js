@@ -31,6 +31,10 @@ const Product = sequelize.define(
       type: DataTypes.DECIMAL(18, 2),
       allowNull: false,
     },
+    discount: {
+      type: DataTypes.FLOAT,
+      allowNull: true,
+    },
     quantity: {
       type: DataTypes.INTEGER,
       allowNull: false,

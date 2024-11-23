@@ -63,7 +63,7 @@ const Order = sequelize.define(
   },
   {
     tableName: "Orders",
-    timestamps: false,
+    timestamps: true,
   }
 );
 Order.belongsTo(User, { foreignKey: "user_id" });
