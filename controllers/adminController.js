@@ -213,7 +213,7 @@ async function getAllProducts(req, res) {
 const addProduct = async (req, res) => {
     try {
         // Lấy dữ liệu từ request body
-        const { category_id, prod_name, prod_description, price, cost, quantity, prod_percent, best_seller, ratings, expiration_date } = req.body;
+        const { category_id, prod_name, prod_description, price, cost, quantity,discount, prod_percent, best_seller, ratings, expiration_date } = req.body;
 
         // Kiểm tra nếu có thiếu dữ liệu quan trọng
         if (!prod_name || !price || !cost || !quantity) {
@@ -228,6 +228,7 @@ const addProduct = async (req, res) => {
             price,
             cost,
             quantity,
+            discount,
             prod_percent,
             best_seller,
             ratings,
@@ -274,6 +275,7 @@ async function updateProduct(req, res) {
             price,
             cost,
             quantity,
+            discount,
             prod_percent,
             best_seller,
             ratings,
@@ -297,6 +299,7 @@ async function updateProduct(req, res) {
             price,
             cost,
             quantity,
+            discount,
             prod_percent,
             best_seller,
             ratings,

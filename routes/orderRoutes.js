@@ -14,6 +14,7 @@ router.get("/all",authenticate, orderController.getAllOrders);
 router.get("/detailOrder/:id", authenticate, orderController.detailsOrderByID);
 router.post("/add", authenticate, orderController.addOrder);
 router.delete('/cancle-order/:id/cancel', authenticate, orderController.cancelOrder);
+router.post('/:id/confirm', authenticate, orderController.confirmOrder);
 router.post("/payment-with-momo", orderController.paymentWithMomo);
 router.post("/callback-with-momo", orderController.callbackMomo);
 

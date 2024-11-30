@@ -3,6 +3,7 @@ const { DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
 const Product = require("./product");
 const Image = require("./image");
+const User = require("./user");
 
 const ProductFeedback = sequelize.define(
   "ProductFeedback",
@@ -35,6 +36,9 @@ const ProductFeedback = sequelize.define(
     timestamps: true,
   }
 );
+
+ProductFeedback.belongsTo(User, { foreignKey: "user_id" });
+User.hasMany(ProductFeedback, { foreignKey: "user_id" });
 
 ProductFeedback.belongsTo(Product, { foreignKey: "product_id" });
 Product.hasMany(ProductFeedback, { foreignKey: "product_id", as: "feeedback" });

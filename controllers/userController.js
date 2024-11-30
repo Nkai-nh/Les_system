@@ -118,25 +118,85 @@ exports.getUserInfo = async (req, res, next) => {
 
 exports.updateUserInfo = async (req, res, next) => {
   try {
-    const { name, email, phone, password } = req.body;
+    const { name, default_address, phone } = req.body;
+
+    // Xác thực dữ liệu đầu vào thủ công
+    if (name && (typeof name !== 'string' || name.length < 2 || name.length > 100)) {
+      return res.status(400).json(formatResponse('Invalid name', null));
+    }
+
+    if (default_address && typeof default_address !== 'string') {
+      return res.status(400).json(formatResponse('Invalid address', null));
+    }
+
+    if (phone && !/^\d+$/.test(phone)) {
+      return res.status(400).json(formatResponse('Invalid phone number', null));
+    }
+
+    // Tìm người dùng
     const user = await User.findOne({ where: { id: req.user.id } });
     if (!user) {
       return res.status(404).json(formatResponse('User not found', null));
     }
 
-    // Update user fields
-    user.name = name || user.name;
-    user.email = email || user.email;
-    user.phone = phone || user.phone;
-
-    // Hash new password if provided
-    if (password) {
-      user.password = await bcrypt.hash(password, 10);
-    }
+    // Cập nhật trường thay đổi
+    if (name) user.name = name;
+    if (default_address) user.default_address = default_address;
+    if (phone) user.phone = phone;
 
     await user.save();
-    res.status(200).json(formatResponse('User updated successfully', user));
+
+    res.status(200).json(formatResponse('User updated successfully', {
+      id: user.id,
+      name: user.name,
+      default_address: user.default_address,
+      phone: user.phone,
+    }));
   } catch (error) {
+    console.error('Error updating user:', error);
+    next(error);
+  }
+};
+
+
+exports.changePassword = async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+
+    // Kiểm tra đầu vào
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json(formatResponse('All fields are required', null));
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json(formatResponse('New password must be at least 8 characters long', null));
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json(formatResponse('New password and confirm password do not match', null));
+    }
+
+    // Lấy thông tin người dùng từ ID đã được xác thực
+    const user = await User.findOne({ where: { id: req.user.id } });
+    if (!user) {
+      return res.status(404).json(formatResponse('User not found', null));
+    }
+
+    // Kiểm tra mật khẩu hiện tại
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json(formatResponse('Current password is incorrect', null));
+    }
+
+    // Hash mật khẩu mới
+    user.password = await bcrypt.hash(newPassword, 10);
+
+    // Lưu thay đổi
+    await user.save();
+
+    res.status(200).json(formatResponse('Password changed successfully', null));
+  } catch (error) {
+    console.error(error);
     next(error);
   }
 };

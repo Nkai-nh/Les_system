@@ -18,7 +18,7 @@ exports.getAllOrders = async (req, res) => {
     // Truy vấn danh sách đơn hàng của người dùng
     const orders = await Order.findAll({
       where: { user_id: userId }, // Lọc theo user
-      attributes: ['id', 'created_at', 'orderStatus', 'total',], // Chỉ lấy các trường cần thiết
+      attributes: ['id', 'orderStatus', 'total', 'createdAt','paymentMethods'], // Chỉ lấy các trường cần thiết
       include: [
         {
           model: Product,
@@ -39,9 +39,10 @@ exports.getAllOrders = async (req, res) => {
     // Chuẩn hóa dữ liệu trả về
     const result = orders.map(order => ({
       orderId: order.id,
-      createdAt: order.created_at,
+      createdAt: order.createdAt,
       status: order.orderStatus,
       total: order.total,
+      paymentMethods: order.paymentMethods,
       products: order.products.map(product => ({
         id: product.id,
         name: product.prod_name,
@@ -260,6 +261,59 @@ exports.cancelOrder = async (req, res, next) => {
     next(error);
   }
 };
+
+// Xác nhận đơn hàng thành công
+exports.confirmOrder = async (req, res, next) => {
+  const { id } = req.params; // Lấy ID của đơn hàng từ tham số URL
+
+  try {
+    // Kiểm tra xem đơn hàng có tồn tại không
+    const order = await Order.findOne({
+      where: { id: id },
+      include: [
+        {
+          model: Product,
+          as: "products",
+          through: { attributes: ["quantity", "price"] },
+        },
+      ],
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // Kiểm tra trạng thái đơn hàng hiện tại
+    if (order.orderStatus === 'confirmed') {
+      return res.status(400).json({
+        success: false,
+        message: "Order has already been confirmed as completed",
+      });
+    }
+
+    // Kiểm tra xem đơn hàng có phải là "shipping" hoặc "progress" để xác nhận
+    if (order.orderStatus !== 'completed') {
+      return res.status(400).json({
+        success: false,
+        message: "Order cannot be confirmed because it is not in the shipping or progress state",
+      });
+    }
+
+    // Cập nhật trạng thái đơn hàng thành "completed"
+    await order.update({ orderStatus: 'confirmed' });
+
+    return res.status(200).json({
+      success: true,
+      message: "Order has been successfully confirmed as completed",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 
 
 exports.paymentWithMomo = async (req, res, next) => {
