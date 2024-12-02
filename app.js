@@ -12,11 +12,18 @@ const blogRoutes = require("./routes/blogRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const variantRoutes = require("./routes/variantRoutes");
 const errorHandler = require("./middlewares/errorHandler");
+const adminRoutes = require('./routes/adminRoutes');
+const PaymentRoutes = require('./routes/paymentRoutes');
 const { authorize } = require("./middlewares/authMiddleware");
 const { authenticate } = require("./middlewares/authMiddleware");
+
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:3000', // Thay 'http://localhost:5000' bằng URL của frontend
+  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Các phương thức HTTP được phép
+  allowedHeaders: ['Content-Type', 'Authorization'] // Các headers được phép
+}));
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -30,6 +37,9 @@ app.use("/api/cart", cartRoutes);
 app.use("/api/category", categoryRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/variants", variantRoutes);
+app.use("/api/payment", PaymentRoutes);
+// Route cho quản trị viên (Admin)
+app.use('/api/admin', adminRoutes);
 
 app.get("/user",authenticate,authorize(["user"]), (req, res) => {
   res.send("Welcome to the API");

@@ -6,18 +6,33 @@ const { generateToken } = require('../middlewares/authMiddleware');
 
 exports.register = async (req, res, next) => {
   try {
-    const { name, email, password, phone } = req.body;
+    const { name, email, password, confirmPassword, phone } = req.body;
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ where: { email } });
-    if (existingUser) {
-      return res.status(400).json(formatResponse('User already exists', null));
+    if (!name,!email || !password || !confirmPassword) {
+      return res.status(400).json({ message: 'Please fill in all required fields' });
     }
 
-    // Hash password
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ message: 'Invalid email format' });
+    }
+
+    if (password.length < 8 || confirmPassword.length < 8) {
+      return res.status(400).json({ message: 'Password must be at least 8 characters' });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({ message: 'Password and confirm password do not match' });
+    }
+
+    const existingUser = await User.findOne({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({ message: 'User already exists' });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create new user
+    // Tạo người dùng mới
     const newUser = await User.create({
       id: uuid.v4(),
       name,
@@ -27,14 +42,13 @@ exports.register = async (req, res, next) => {
       role: 'user',
     });
 
-    // Send confirmation email (optional)
-    // await sendMail(email, 'Welcome to Our Service', 'welcome', { name });
-
-    res.status(201).json(formatResponse('User registered successfully', newUser));
+    return res.status(201).json({ message: 'User registered successfully', user: newUser });
   } catch (error) {
+    console.error(error); // Log lỗi để xem chi tiết
     next(error);
   }
 };
+
 
 exports.login = async (req, res, next) => {
   try {
@@ -55,7 +69,7 @@ exports.login = async (req, res, next) => {
     // Generate token
     const token = generateToken(user);
 
-    res.status(200).json(formatResponse('Login successful', { token, user }));
+    res.status(200).json(formatResponse('Login successfully', { token, user }));
   } catch (error) {
     next(error);
   }
