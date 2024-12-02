@@ -2,7 +2,7 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
 const Product = require("./product");
-const Image = require("./image");
+const ImageFeedback = require("./imageFeedBack");
 
 const ProductFeedback = sequelize.define(
   "ProductFeedback",
@@ -36,10 +36,10 @@ const ProductFeedback = sequelize.define(
   }
 );
 
-ProductFeedback.belongsTo(Product, { foreignKey: "product_id" });
-Product.hasMany(ProductFeedback, { foreignKey: "product_id", as: "feeedback" });
+ProductFeedback.belongsTo(Product, { foreignKey: "feedback_id" });
+Product.hasMany(ProductFeedback, { foreignKey: "feedback_id", as: "feeedback" });
 
-ProductFeedback.belongsTo(Image, { foreignKey: "image_id" });
-Image.hasMany(ProductFeedback, { foreignKey: "image_id", as: "feedbackImages" });
+ProductFeedback.belongsTo(ImageFeedback, { foreignKey: "image_id" });
+ImageFeedback.hasMany(ProductFeedback, { foreignKey: "image_id", as: "feedbackImages" });
 
 module.exports = ProductFeedback;

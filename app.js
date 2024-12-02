@@ -8,6 +8,7 @@ const userRoutes = require("./routes/userRoutes");
 const productRoutes = require("./routes/productRoutes");
 const cartRoutes = require("./routes/cartRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
+const blogRoutes = require("./routes/blogRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const variantRoutes = require("./routes/variantRoutes");
 const errorHandler = require("./middlewares/errorHandler");
@@ -22,6 +23,7 @@ app.use(express.urlencoded({ extended: false }));
 
 app.use('/uploads', express.static('uploads'));
 
+app.use('/api/blog',blogRoutes )
 app.use("/api/users", userRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);
