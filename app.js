@@ -13,6 +13,7 @@ const variantRoutes = require("./routes/variantRoutes");
 const errorHandler = require("./middlewares/errorHandler");
 const adminRoutes = require('./routes/adminRoutes');
 const PaymentRoutes = require('./routes/paymentRoutes');
+const AddressRoutes = require('./routes/deliveryAddressRoutes');
 const { authorize } = require("./middlewares/authMiddleware");
 const { authenticate } = require("./middlewares/authMiddleware");
 
@@ -36,6 +37,7 @@ app.use("/api/category", categoryRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/variants", variantRoutes);
 app.use("/api/payment", PaymentRoutes);
+app.use("/api/address", AddressRoutes);
 // Route cho quản trị viên (Admin)
 app.use('/api/admin', adminRoutes);
 
