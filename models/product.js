@@ -55,6 +55,22 @@ const Product = sequelize.define(
       type: DataTypes.DATE,
       allowNull: true,
     },
+    usage_instructions: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    benefits: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    origin: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
+    additional_info: {
+      type: DataTypes.JSON,
+      allowNull: true,
+    },
     
   },
   {
