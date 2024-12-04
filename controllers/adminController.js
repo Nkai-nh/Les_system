@@ -213,7 +213,7 @@ async function getAllProducts(req, res) {
 const addProduct = async (req, res) => {
     try {
         // Lấy dữ liệu từ request body
-        const { category_id, prod_name, prod_description, price, cost, quantity,discount, prod_percent, best_seller, ratings, expiration_date } = req.body;
+        const { category_id, prod_name, prod_description, price, cost, quantity, discount, prod_percent, best_seller, ratings, expiration_date, usage_instructions, benefits, origin, additional_info } = req.body;
 
         // Kiểm tra nếu có thiếu dữ liệu quan trọng
         if (!prod_name || !price || !cost || !quantity) {
@@ -233,6 +233,7 @@ const addProduct = async (req, res) => {
             best_seller,
             ratings,
             expiration_date,
+            usage_instructions, benefits, origin, additional_info
         });
 
 
@@ -280,6 +281,10 @@ async function updateProduct(req, res) {
             best_seller,
             ratings,
             expiration_date,
+            usage_instructions,
+            benefits,
+            origin,
+            additional_info
         } = req.body;
 
         const images = req.files; // Các file ảnh sẽ được lưu vào req.files
@@ -303,7 +308,8 @@ async function updateProduct(req, res) {
             prod_percent,
             best_seller,
             ratings,
-            expiration_date
+            expiration_date,
+            usage_instructions, benefits, origin, additional_info
         });
 
         // Kiểm tra nếu có ảnh mới

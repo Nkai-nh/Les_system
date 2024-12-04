@@ -4,70 +4,67 @@ const User = require('../models/user');
 const Order = require('../models/order');
 const Product = require('../models/product');
 const FeedBack = require('../models/productFeedback');
+const ImageFeedback = require('../models/imageFeedBack');
+const ProductFeedback = require('../models/productFeedback');
 
 
-// exports.getALlFeedback = async (req,res,next)=>{
-//     try {
-//         const feedback = await FeedBack.findAll();
-//         res.status(200).json(feedback)
-//     } catch (error) {
-//         next(error)
-//     }
-// }
 
-exports.getALlFeedback = async (req, res, next) => {
+exports.getAllFeedback = async (req, res, next) => {
     try {
-        const { productId } = req.params; // Lấy productId từ URL params
+        const { productId } = req.params;
 
-        // Truy vấn feedbacks theo productId kèm theo thông tin người dùng và hình ảnh (nếu có)
-        const feedbacks = await FeedBack.findAll({
-            where: productId ? { product_id: productId } : {}, // Lọc theo productId nếu có
+        if (!productId) {
+            return res.status(400).json({ message: 'product_id không hợp lệ' });
+        }
+
+        const feedbacks = await ProductFeedback.findAll({
+            where: { product_id: productId },
             include: [
                 {
                     model: User,
-                    attributes: ['name'],  // Lấy tên người dùng
-                    required: true,         // Liên kết bắt buộc với người dùng
+                    attributes: ['name'],
+                    required: true,
                 },
                 {
-                    model: Image,
-                    attributes: ['url'],    // Chỉ lấy url ảnh
-                    required: false,        // Không bắt buộc có ảnh
+                    model: ImageFeedback,
+                    attributes: ['url'],
+                    required: false,
+                    as: 'images',
                 },
             ],
-            order: [['createdAt', 'DESC']], // Sắp xếp theo ngày tạo mới nhất
+            order: [['createdAt', 'DESC']],
         });
 
-        // Kiểm tra nếu không có phản hồi nào
-        if (feedbacks.length === 0) {
-            return res.status(404).json({ message: 'Không có phản hồi nào' });
+        if (!feedbacks || feedbacks.length === 0) {
+            return res.status(404).json({ message: 'Không có phản hồi nào cho sản phẩm này' });
         }
 
-        // Xử lý và trả về phản hồi dạng dễ đọc
         const feedbackList = feedbacks.map(feedback => ({
             id: feedback.id,
-            user_name: feedback.User.name, // Tên người dùng
-            createdAt: feedback.createdAt, // Ngày tạo
-            content: feedback.content,     // Nội dung feedback
-            rating: feedback.rating,       // Đánh giá
-            images: feedback.Images ? feedback.Images.map(image => image.url) : [], // Trả về ảnh nếu có
+            user_name: feedback.User.name,
+            createdAt: feedback.createdAt,
+            content: feedback.content,
+            rating: feedback.rating,
+            images: feedback.images ? feedback.images.map(image => image.url) : [],
         }));
 
-        // Trả về kết quả
         res.status(200).json({
             message: 'Danh sách phản hồi',
             feedbacks: feedbackList,
         });
     } catch (error) {
-        next(error);  // Xử lý lỗi
+        console.error("Lỗi khi lấy phản hồi:", error);
+        next(error);
     }
 };
+
 // Hàm viết phản hồi mới
 exports.writeFeedback = async (req, res, next) => {
     try {
-        const { product_id, rating, content, user_id } = req.body;
+        const { product_id, rating, content, user_id, order_id } = req.body;
 
         // Kiểm tra xem người dùng có thể đánh giá sản phẩm này không
-        const order = await Order.findOne({ where: { user_id, id: req.body.order_id } });
+        const order = await Order.findOne({ where: { user_id, id: order_id } });
         if (!order) {
             return res.status(400).json({ message: 'Không tìm thấy đơn hàng này' });
         }
@@ -84,18 +81,14 @@ exports.writeFeedback = async (req, res, next) => {
             content,
         });
 
-        // Nếu có hình ảnh kèm theo feedback
-        if (req.files && req.files.length > 0) {
-            const images = req.files.map(file => ({
-                product_id,
-                url: `/uploads/${file.filename}`,
+        // Upload hình ảnh nếu có
+        if (req.files) {
+            const imageFeedbacks = req.files.map(file => ({
+                feedback_id: newFeedback.id,
+                url: `uploads/feedbacks/${file.filename}` // Lưu đường dẫn hình ảnh phản hồi
             }));
 
-            // Lưu thông tin hình ảnh vào cơ sở dữ liệu
-            await Image.bulkCreate(images);
-
-            // Cập nhật liên kết hình ảnh vào feedback
-            await newFeedback.setImages(images);
+            await ImageFeedback.bulkCreate(imageFeedbacks); // Tạo nhiều bản ghi hình ảnh
         }
 
         res.status(201).json({ message: 'Feedback đã được gửi thành công', feedback: newFeedback });
