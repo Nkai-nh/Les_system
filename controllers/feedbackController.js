@@ -22,7 +22,7 @@ exports.getAllFeedback = async (req, res, next) => {
             include: [
                 {
                     model: User,
-                    attributes: ['name'],
+                    attributes: ['name','avatar'],
                     required: true,
                 },
                 {
@@ -42,6 +42,7 @@ exports.getAllFeedback = async (req, res, next) => {
         const feedbackList = feedbacks.map(feedback => ({
             id: feedback.id,
             user_name: feedback.User.name,
+            avatar: feedback.User.avatar,
             createdAt: feedback.createdAt,
             content: feedback.content,
             rating: feedback.rating,

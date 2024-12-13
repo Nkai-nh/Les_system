@@ -8,7 +8,7 @@ const {
 const  { createProduct, updateProduct, deleteProduct } = require("../controllers/productManageController");
 const upload = require("../middlewares/uploadMiddleware");
 const { getAllIvoice } = require("../controllers/invoiceController");
-const { getAllCoupons } = require("../controllers/couponController");
+const { getAllCoupons, getAllActiveCoupons } = require("../controllers/couponController");
 const { getAllFeedback, writeFeedback } = require("../controllers/feedbackController");
 const uploadFeedback = require("../middlewares/uploadMiddlewareFeedback");
 const router = express.Router();
@@ -23,6 +23,7 @@ router.delete("/manage/delete/:id", deleteProduct);
 router.get("/feedback/:productId", getAllFeedback);
 router.post("/feedback/write", uploadFeedback.array('images', 5), writeFeedback);
 router.get("/coupons/all", getAllCoupons)
+router.get("/coupons/active/all", getAllActiveCoupons)
 
 router.get("/invoices/all", getAllIvoice);
 module.exports = router;

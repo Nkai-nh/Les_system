@@ -7,6 +7,7 @@ const crypto = require("crypto-js");
 const axios = require("axios");
 const Product = require("../models/product");
 const Image = require("../models/image");
+const { sendMail } = require('../utils/mailer');
 
 
 
@@ -112,10 +113,10 @@ exports.addOrder = async (req, res, next) => {
   console.log(req.body);
 
   try {
-    const { paymentMethods, name, phone, address, note, orderDetails, is_payment, created_at } = req.body;
+    const { paymentMethods, name, phone, address, note, orderDetails, total, is_payment, created_at } = req.body;
     const isPayment = paymentMethods === "COD";
 
-    let total = 0;
+    let calculatedTotal = 0;
 
     // Kiểm tra tồn tại sản phẩm và tính tổng giá trị đơn hàng
     for (const detail of orderDetails) {
@@ -130,7 +131,7 @@ exports.addOrder = async (req, res, next) => {
         return res.status(400).json(formatResponse(`Not enough quantity for product ID ${detail.product_id}`, null, false));
       }
 
-      total += product.price * detail.quantity;
+      calculatedTotal += product.price * detail.quantity;
     }
 
     // Tạo đơn hàng
@@ -141,7 +142,7 @@ exports.addOrder = async (req, res, next) => {
         paymentMethods,
         name,
         phone,
-        total,
+        total: parseFloat(total),
         address,
         note,
         isPayment,
@@ -165,6 +166,7 @@ exports.addOrder = async (req, res, next) => {
           product_id: detail.product_id,
           quantity: detail.quantity,
           price: product.price,
+          prod_name: product.prod_name,
         },
         { transaction }
       );
@@ -181,12 +183,34 @@ exports.addOrder = async (req, res, next) => {
         product_id: detail.product_id,
         quantity: detail.quantity,
         price: product.price,
+        prod_name: product.prod_name,
         images: product.images.map(image => image.url), // Lấy URL hình ảnh
       });
     }
 
     await transaction.commit();
-
+    
+    // Gửi email xác nhận cho khách hàng
+    const emailContext = {
+      customerName: name,
+      orderItems: orderDetailsWithImages.map(item => ({
+        ...item,
+        images: item.images.map(image => `${image}`) // Đảm bảo URL đầy đủ cho hình ảnh
+      })),
+      totalPrice: total
+    };
+    const userEmail = req.user.email;
+    try {
+    await sendMail(
+      userEmail, // Email của khách hàng
+        "Order Confirmation",
+        "emailTemplate",
+        emailContext
+      );
+      console.log(`Email sent successfully to: ${phone}`);  // Log thành công gửi email
+    } catch (error) {
+      console.error("Error sending email:", error);  // Log nếu có lỗi xảy ra khi gửi email
+    }
     // Lấy chi tiết đơn hàng đã lưu
     res.status(201).json(formatResponse("Order added successfully", {
       order,

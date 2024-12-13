@@ -118,9 +118,9 @@ exports.getUserInfo = async (req, res, next) => {
 
 exports.updateUserInfo = async (req, res, next) => {
   try {
-    const { name, default_address, phone } = req.body;
+    const { name, default_address, phone, avatar } = req.body; // Thêm avatar vào req.body
 
-    // Xác thực dữ liệu đầu vào thủ công
+    // Xác thực dữ liệu đầu vào
     if (name && (typeof name !== 'string' || name.length < 2 || name.length > 100)) {
       return res.status(400).json(formatResponse('Invalid name', null));
     }
@@ -133,16 +133,21 @@ exports.updateUserInfo = async (req, res, next) => {
       return res.status(400).json(formatResponse('Invalid phone number', null));
     }
 
+    if (avatar && typeof avatar !== 'string') {
+      return res.status(400).json(formatResponse('Invalid avatar', null));
+    }
+
     // Tìm người dùng
     const user = await User.findOne({ where: { id: req.user.id } });
     if (!user) {
       return res.status(404).json(formatResponse('User not found', null));
     }
 
-    // Cập nhật trường thay đổi
+    // Cập nhật các trường thay đổi
     if (name) user.name = name;
     if (default_address) user.default_address = default_address;
     if (phone) user.phone = phone;
+    if (avatar) user.avatar = avatar; // Cập nhật trường avatar
 
     await user.save();
 
@@ -151,12 +156,14 @@ exports.updateUserInfo = async (req, res, next) => {
       name: user.name,
       default_address: user.default_address,
       phone: user.phone,
+      avatar: user.avatar, // Trả về thông tin avatar
     }));
   } catch (error) {
     console.error('Error updating user:', error);
     next(error);
   }
 };
+
 
 
 exports.changePassword = async (req, res, next) => {

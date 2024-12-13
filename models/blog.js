@@ -1,4 +1,3 @@
-
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
 const User = require("./user");
@@ -23,6 +22,15 @@ const Blog = sequelize.define(
     author_id: {
       type: DataTypes.STRING(50),
       allowNull: false,
+    },
+    image_url: {
+      type: DataTypes.STRING,
+      allowNull: true, // Hình ảnh có thể không bắt buộc
+    },
+    is_approved: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false, // Mặc định chưa được duyệt
     },
     created_at: {
       type: DataTypes.DATE,
