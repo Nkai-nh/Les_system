@@ -2,6 +2,8 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
 const Product = require("./product");
+const Image = require("./image");
+const User = require("./user");
 const ImageFeedback = require("./imageFeedBack");
 
 const ProductFeedback = sequelize.define(
@@ -36,10 +38,20 @@ const ProductFeedback = sequelize.define(
   }
 );
 
-ProductFeedback.belongsTo(Product, { foreignKey: "feedback_id" });
-Product.hasMany(ProductFeedback, { foreignKey: "feedback_id", as: "feeedback" });
+ProductFeedback.belongsTo(User, { foreignKey: "user_id" });
+User.hasMany(ProductFeedback, { foreignKey: "user_id" });
 
-ProductFeedback.belongsTo(ImageFeedback, { foreignKey: "image_id" });
-ImageFeedback.hasMany(ProductFeedback, { foreignKey: "image_id", as: "feedbackImages" });
+// ProductFeedback.belongsTo(Product, { foreignKey: "product_id" });
+// Product.hasMany(ProductFeedback, { foreignKey: "product_id", as: "feedback" });
+
+// ProductFeedback.belongsTo(Product, { foreignKey: "feedback_id" });
+// Product.hasMany(ProductFeedback, { foreignKey: "feedback_id", as: "feeedback" });
+
+// ProductFeedback.belongsTo(ImageFeedback, { foreignKey: "image_id" });
+// ImageFeedback.hasMany(ProductFeedback, { foreignKey: "image_id", as: "feedbackImages" });
+// ProductFeedback.belongsTo(Image, { foreignKey: "image_id" });
+// Image.hasMany(ProductFeedback, { foreignKey: "image_id", as: "feedbackImages" });
+ProductFeedback.hasMany(ImageFeedback, { foreignKey: "feedback_id", as: "images" });
+ImageFeedback.belongsTo(ProductFeedback, { foreignKey: "feedback_id" });
 
 module.exports = ProductFeedback;

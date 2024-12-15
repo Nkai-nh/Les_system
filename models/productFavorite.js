@@ -7,7 +7,8 @@ const ProductFavorite = sequelize.define(
   "ProductFavorite",
   {
     id: {
-      type: DataTypes.STRING(50),
+      type: DataTypes.UUID, // Sử dụng UUID
+      defaultValue: DataTypes.UUIDV4, // Tự động tạo UUID
       primaryKey: true,
       allowNull: false,
     },

@@ -7,6 +7,7 @@ const crypto = require("crypto-js");
 const axios = require("axios");
 const Product = require("../models/product");
 const Image = require("../models/image");
+const { sendMail } = require('../utils/mailer');
 
 
 
@@ -18,7 +19,7 @@ exports.getAllOrders = async (req, res) => {
     // Truy vấn danh sách đơn hàng của người dùng
     const orders = await Order.findAll({
       where: { user_id: userId }, // Lọc theo user
-      attributes: ['id', 'created_at', 'orderStatus', 'total',], // Chỉ lấy các trường cần thiết
+      attributes: ['id', 'orderStatus', 'total', 'createdAt','paymentMethods'], // Chỉ lấy các trường cần thiết
       include: [
         {
           model: Product,
@@ -39,9 +40,10 @@ exports.getAllOrders = async (req, res) => {
     // Chuẩn hóa dữ liệu trả về
     const result = orders.map(order => ({
       orderId: order.id,
-      createdAt: order.created_at,
+      createdAt: order.createdAt,
       status: order.orderStatus,
       total: order.total,
+      paymentMethods: order.paymentMethods,
       products: order.products.map(product => ({
         id: product.id,
         name: product.prod_name,
@@ -111,10 +113,10 @@ exports.addOrder = async (req, res, next) => {
   console.log(req.body);
 
   try {
-    const { paymentMethods, name, phone, address, note, orderDetails, is_payment, created_at } = req.body;
+    const { paymentMethods, name, phone, address, note, orderDetails, total, is_payment, created_at } = req.body;
     const isPayment = paymentMethods === "COD";
 
-    let total = 0;
+    let calculatedTotal = 0;
 
     // Kiểm tra tồn tại sản phẩm và tính tổng giá trị đơn hàng
     for (const detail of orderDetails) {
@@ -129,7 +131,7 @@ exports.addOrder = async (req, res, next) => {
         return res.status(400).json(formatResponse(`Not enough quantity for product ID ${detail.product_id}`, null, false));
       }
 
-      total += product.price * detail.quantity;
+      calculatedTotal += product.price * detail.quantity;
     }
 
     // Tạo đơn hàng
@@ -140,7 +142,7 @@ exports.addOrder = async (req, res, next) => {
         paymentMethods,
         name,
         phone,
-        total,
+        total: parseFloat(total),
         address,
         note,
         isPayment,
@@ -164,6 +166,7 @@ exports.addOrder = async (req, res, next) => {
           product_id: detail.product_id,
           quantity: detail.quantity,
           price: product.price,
+          prod_name: product.prod_name,
         },
         { transaction }
       );
@@ -180,12 +183,34 @@ exports.addOrder = async (req, res, next) => {
         product_id: detail.product_id,
         quantity: detail.quantity,
         price: product.price,
+        prod_name: product.prod_name,
         images: product.images.map(image => image.url), // Lấy URL hình ảnh
       });
     }
 
     await transaction.commit();
-
+    
+    // Gửi email xác nhận cho khách hàng
+    const emailContext = {
+      customerName: name,
+      orderItems: orderDetailsWithImages.map(item => ({
+        ...item,
+        images: item.images.map(image => `${image}`) // Đảm bảo URL đầy đủ cho hình ảnh
+      })),
+      totalPrice: total
+    };
+    const userEmail = req.user.email;
+    try {
+    await sendMail(
+      userEmail, // Email của khách hàng
+        "Order Confirmation",
+        "emailTemplate",
+        emailContext
+      );
+      console.log(`Email sent successfully to: ${phone}`);  // Log thành công gửi email
+    } catch (error) {
+      console.error("Error sending email:", error);  // Log nếu có lỗi xảy ra khi gửi email
+    }
     // Lấy chi tiết đơn hàng đã lưu
     res.status(201).json(formatResponse("Order added successfully", {
       order,
@@ -260,6 +285,59 @@ exports.cancelOrder = async (req, res, next) => {
     next(error);
   }
 };
+
+// Xác nhận đơn hàng thành công
+exports.confirmOrder = async (req, res, next) => {
+  const { id } = req.params; // Lấy ID của đơn hàng từ tham số URL
+
+  try {
+    // Kiểm tra xem đơn hàng có tồn tại không
+    const order = await Order.findOne({
+      where: { id: id },
+      include: [
+        {
+          model: Product,
+          as: "products",
+          through: { attributes: ["quantity", "price"] },
+        },
+      ],
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // Kiểm tra trạng thái đơn hàng hiện tại
+    if (order.orderStatus === 'confirmed') {
+      return res.status(400).json({
+        success: false,
+        message: "Order has already been confirmed as completed",
+      });
+    }
+
+    // Kiểm tra xem đơn hàng có phải là "shipping" hoặc "progress" để xác nhận
+    if (order.orderStatus !== 'completed') {
+      return res.status(400).json({
+        success: false,
+        message: "Order cannot be confirmed because it is not in the shipping or progress state",
+      });
+    }
+
+    // Cập nhật trạng thái đơn hàng thành "completed"
+    await order.update({ orderStatus: 'confirmed' });
+
+    return res.status(200).json({
+      success: true,
+      message: "Order has been successfully confirmed as completed",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 
 
 exports.paymentWithMomo = async (req, res, next) => {

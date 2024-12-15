@@ -28,6 +28,11 @@ const Coupons = sequelize.define(
       type: DataTypes.DATE,
       allowNull: false,
     },
+    code: {  // Thêm trường code
+      type: DataTypes.STRING(50),
+      allowNull: false,
+      unique: true,  // Đảm bảo mã coupon là duy nhất
+    },
   },
   {
     tableName: "Coupons",

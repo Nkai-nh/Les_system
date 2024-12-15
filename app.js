@@ -13,7 +13,10 @@ const orderRoutes = require("./routes/orderRoutes");
 const variantRoutes = require("./routes/variantRoutes");
 const errorHandler = require("./middlewares/errorHandler");
 const adminRoutes = require('./routes/adminRoutes');
+const manageRoutes = require('./routes/manageRoutes');
 const PaymentRoutes = require('./routes/paymentRoutes');
+const AddressRoutes = require('./routes/deliveryAddressRoutes');
+const FavoriteRoutes = require('./routes/favorites');
 const { authorize } = require("./middlewares/authMiddleware");
 const { authenticate } = require("./middlewares/authMiddleware");
 
@@ -38,8 +41,11 @@ app.use("/api/category", categoryRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/variants", variantRoutes);
 app.use("/api/payment", PaymentRoutes);
+app.use("/api/address", AddressRoutes);
+app.use("/api/favorites", FavoriteRoutes);
 // Route cho quản trị viên (Admin)
 app.use('/api/admin', adminRoutes);
+app.use('/api/manager', manageRoutes);
 
 app.get("/user",authenticate,authorize(["user"]), (req, res) => {
   res.send("Welcome to the API");

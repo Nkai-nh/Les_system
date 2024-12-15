@@ -40,5 +40,17 @@ router.get('/reports/sales/yearly', authenticate, authorize('admin'), adminContr
 router.get('/reports/activity', authenticate, authorize('admin'), adminController.getActivityReport);
 router.get('/table', authenticate, authorize('admin'), adminController.getAllTables);
 
+//add coupon
+router.post("/coupons/create", authenticate, authorize('admin'), adminController.addCoupon)
+router.get("/coupons/getAll", authenticate, authorize('admin'), adminController.getAllCoupons)
+router.get("/coupons/active", authenticate, authorize('admin'), adminController.getActiveCoupons)
+router.delete("/coupons/delete/:id", authenticate, authorize('admin'), adminController.deleteCoupon)
+
+//blogs
+router.get("/all-blogs", authenticate, authorize('admin'), adminController.getAllBlogsAdmin)
+router.get("/details-blogs/:blogId", authenticate, authorize('admin'), adminController.getDetailsBlogAdmin)
+router.delete("/delete-blogs/:blogId", authenticate, authorize('admin'), adminController.deleteBlogAdmin)
+router.put("/approve/:blogId", authenticate, authorize('admin'), adminController.approveBlogAdmin)
+
 
 module.exports = router;

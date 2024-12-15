@@ -51,6 +51,10 @@ const User = sequelize.define(
       type: DataTypes.STRING(50),
       allowNull: true,
     },
+    avatar: {
+      type: DataTypes.TEXT, // Không giới hạn độ dài
+      allowNull: true,
+    },
   },
   {
     tableName: "Users",

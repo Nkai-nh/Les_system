@@ -14,6 +14,7 @@ exports.getAllProducts = async (req, res, next) => {
       minPrice,
       maxPrice,
       sort = "asc",
+      ratings,
     } = req.query;
 
     const offset = (page - 1) * limit;
@@ -29,6 +30,10 @@ exports.getAllProducts = async (req, res, next) => {
 
     if (maxPrice) {
       where.price = { ...where.price, [Op.lte]: parseFloat(maxPrice) };
+    }
+    // Lọc theo ratings nếu có
+    if (ratings) {
+      where.ratings = parseInt(ratings); // Lọc chính xác
     }
 
     const order = [["price", sort === "desc" ? "DESC" : "ASC"]];
