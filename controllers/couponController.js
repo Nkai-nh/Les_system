@@ -1,6 +1,7 @@
 
 const Coupons = require("../models/coupons")
 const { Op } = require('sequelize');
+const moment = require('moment');
 exports.getAllCoupons = async (req, res,next) => {
   try {
     const discounts = await Coupons.findAll();
@@ -12,13 +13,16 @@ exports.getAllCoupons = async (req, res,next) => {
 
 exports.getAllActiveCoupons = async (req, res) => {
   try {
+    const todayStart = moment().startOf('day').toDate(); // Lấy thời điểm bắt đầu hôm nay
+    const todayEnd = moment().endOf('day').toDate(); // Lấy thời điểm kết thúc hôm nay
+
     const coupons = await Coupons.findAll({
       where: {
         start_date: {
-          [Op.lte]: new Date(), // Ngày bắt đầu trước hoặc bằng hôm nay
+          [Op.lte]: todayEnd, // Ngày bắt đầu trước hoặc bằng cuối hôm nay
         },
         end_date: {
-          [Op.gte]: new Date(), // Ngày kết thúc sau hoặc bằng hôm nay
+          [Op.gte]: todayStart, // Ngày kết thúc sau hoặc bằng bắt đầu hôm nay
         },
       },
     });

@@ -388,8 +388,40 @@ const addCategory = async (req, res) => {
         const { category_id, name, description, slug } = req.body;
 
         // Kiểm tra dữ liệu đầu vào
-        if (!category_id || !name) {
-            return res.status(400).json({ message: 'category_id và name là bắt buộc.' });
+        const errors = {};
+
+        // Kiểm tra category_id (2 - 10 ký tự)
+        if (!category_id || category_id.trim() === '') {
+            errors.category_id = 'Category ID là bắt buộc.';
+        } else if (category_id.length < 2 || category_id.length > 10) {
+            errors.category_id = 'Category ID phải từ 2 đến 10 ký tự.';
+        } else if (!/^[a-zA-Z0-9]+$/.test(category_id)) {
+            errors.category_id = 'Category ID chỉ được chứa ký tự chữ và số.';
+        }
+        // Kiểm tra name (3 - 20 ký tự)
+        if (!name || name.trim() === '') {
+            errors.name = 'Tên danh mục là bắt buộc.';
+        } else if (name.length < 3 || name.length > 20) {
+            errors.name = 'Tên danh mục phải từ 3 đến 20 ký tự.';
+        }
+
+        // Kiểm tra description (3 - 20 ký tự, nếu có)
+        if (description && (description.length < 3 || description.length > 20)) {
+            errors.description = 'Mô tả phải từ 3 đến 20 ký tự.';
+        }
+
+        // Kiểm tra slug (3 - 20 ký tự)
+        if (!slug || slug.trim() === '') {
+            errors.slug = 'Slug là bắt buộc.';
+        } else if (slug.length < 3 || slug.length > 20) {
+            errors.slug = 'Slug phải từ 3 đến 20 ký tự.';
+        } else if (!/^[a-z0-9-]+$/.test(slug)) {
+            errors.slug = 'Slug chỉ được chứa ký tự thường, số và dấu gạch ngang.';
+        }
+
+        // Nếu có lỗi, trả về lỗi
+        if (Object.keys(errors).length > 0) {
+            return res.status(400).json({ errors });
         }
 
         // Tạo danh mục mới

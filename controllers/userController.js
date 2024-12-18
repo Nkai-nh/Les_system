@@ -3,6 +3,8 @@ const User = require('../models/user');
 const { formatResponse } = require('../utils/responseFormatter');
  const uuid = require('uuid');
 const { generateToken } = require('../middlewares/authMiddleware');
+const { sendMail } = require('../utils/mailer');
+const jwt = require('jsonwebtoken');
 
 exports.register = async (req, res, next) => {
   try {
@@ -207,3 +209,56 @@ exports.changePassword = async (req, res, next) => {
     next(error);
   }
 };
+
+// Gửi email đặt lại mật khẩu
+exports.requestPasswordReset = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      return res.status(404).json(formatResponse('User not found', null));
+    }
+
+    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const resetLink = `http://localhost:3000/reset-password/${token}`;
+    await sendMail(email, 'Đặt lại mật khẩu', 'resetPassword', { link: resetLink });
+    res.status(200).json(formatResponse('Liên kết đặt lại mật khẩu đã được gửi đến email của bạn.', null));
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+};
+
+// Cập nhật mật khẩu mới
+// Hàm reset password trong backend
+exports.resetPassword = async (req, res, next) => {
+  // Lấy token từ header 'Authorization'
+  const token = req.headers['authorization']?.split(' ')[1]; // Tách token từ "Bearer <token>"
+
+  // Kiểm tra nếu không có token
+  if (!token) {
+    return res.status(400).json({ message: 'JWT must be provided' });
+  }
+
+  try {
+    // Xác minh token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET); // Đảm bảo token hợp lệ
+
+    // Tiến hành logic reset password
+    const user = await User.findOne({ where: { id: decoded.id } });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Tiến hành cập nhật mật khẩu mới
+    user.password = await bcrypt.hash(req.body.newPassword, 10);
+    await user.save();
+
+    res.status(200).json({ message: 'Password reset successfully' });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Token verification failed' });
+  }
+};
+
