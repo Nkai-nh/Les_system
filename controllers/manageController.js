@@ -487,7 +487,7 @@ const deleteCoupon = async (req, res, next) => {
 const  getAllBlogsAdmin = async (req, res, next) => {
     try {
         const blogs = await Blog.findAll({
-            attributes: ["id", "title", "content", "image_url", "is_approved", "created_at", "author_id"],
+            attributes: ["id", "title", "content1", "content2", "content3", "image_url", "is_approved", "created_at", "highlightedContent", "category", "author_id"],
         });
 
         return res.status(200).json(formatResponse("Blogs retrieved successfully", blogs));
@@ -504,7 +504,7 @@ const getDetailsBlogAdmin = async (req, res, next) => {
     try {
         const blog = await Blog.findOne({
             where: { id: blogId },
-            attributes: ["id", "title", "content", "image_url", "is_approved", "created_at", "author_id"],
+            attributes: ["id", "title", "content1", "content2", "content3", "image_url", "is_approved", "created_at", "author_id", "highlightedContent", "category",],
         });
 
         if (!blog) {
@@ -558,6 +558,50 @@ const  approveBlogAdmin = async (req, res, next) => {
         return res.status(500).json(formatResponse(false, "Error approving blog"));
     }
 };
+
+
+// Tìm kiếm bài viết theo tiêu đề
+const searchBlogs = async (req, res, next) => {
+    const { title } = req.query;
+    const { page = 1, limit = 10 } = req.query;  // Pagination parameters (default to page 1 and limit 10)
+
+    // Kiểm tra xem title có được cung cấp không
+    if (!title) {
+        return res.status(400).json(formatResponse(false, "Title is required for searching"));
+    }
+
+    // Kiểm tra quyền truy cập (Admin only)
+    if (!req.user || !req.user.isAdmin) {
+        return res.status(403).json(formatResponse(false, "Access denied"));
+    }
+
+    try {
+        // Tìm kiếm các bài viết có chứa title (case-insensitive)
+        const blogs = await Blog.findAll({
+            where: {
+                title: {
+                    [Op.iLike]: `%${title}%` // Sử dụng iLike cho tìm kiếm không phân biệt chữ hoa/thường (nếu sử dụng PostgreSQL)
+                }
+            },
+            attributes: ["id", "title", "content", "image_url", "is_approved", "created_at", "author_id"],
+            limit: limit,    // Giới hạn số lượng kết quả
+            offset: (page - 1) * limit, // Xử lý phân trang
+        });
+
+        // Kiểm tra nếu không có bài viết nào tìm thấy
+        if (blogs.length === 0) {
+            return res.status(404).json(formatResponse(false, "No blogs found matching the title"));
+        }
+
+        // Trả về kết quả tìm kiếm
+        return res.status(200).json(formatResponse("Blogs retrieved successfully", blogs));
+    } catch (error) {
+        console.error("Error searching blogs:", error);
+        return res.status(500).json(formatResponse(false, "Error searching blogs"));
+    }
+};
+
+
 module.exports = {
     getAllProducts,
     addProduct,
@@ -577,5 +621,6 @@ module.exports = {
     getAllBlogsAdmin,
     getDetailsBlogAdmin,
     deleteBlogAdmin,
-    approveBlogAdmin
+    approveBlogAdmin,
+    searchBlogs
 };

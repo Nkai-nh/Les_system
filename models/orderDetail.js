@@ -30,6 +30,9 @@ const OrderDetail = sequelize.define(
     timestamps: false,
   }
 );
+// Quan hệ giữa Order và OrderDetail
+OrderDetail.belongsTo(Order, { foreignKey: "order_id", as: "order" });
+OrderDetail.belongsTo(Product, { foreignKey: "product_id" });
 
 Product.belongsToMany(
   Order,

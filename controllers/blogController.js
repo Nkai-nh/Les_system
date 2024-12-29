@@ -24,11 +24,11 @@ exports.getAllBlog = async (req, res, next) => {
 
 // Người dùng tạo một bài viết mới
 exports.writeBlog = async (req, res, next) => {
-    const { title, content, author_id } = req.body;
+    const { category, title, content1, content2, content3, highlightedContent, author_id, views } = req.body;
 
     try {
         // Kiểm tra các trường bắt buộc
-        if (!title || !content || !author_id) {
+        if (!title || !content1 || !author_id || !highlightedContent || !category) {
             return res.status(400).json(formatResponse(false, "Title, content, and author_id are required."));
         }
 
@@ -37,8 +37,12 @@ exports.writeBlog = async (req, res, next) => {
 
         // Tạo bài viết
         const newBlog = await Blog.create({
+            category,
+            highlightedContent,
             title,
-            content,
+            content1,
+            content2,
+            content3,
             author_id,
             image_url,
             is_approved: false,
@@ -58,7 +62,7 @@ exports.getDetailsBlog = async (req, res, next) => {
     try {
         const blog = await Blog.findOne({
             where: { id: blogId, is_approved: true }, // Chỉ lấy bài đã được duyệt
-            attributes: ["id", "title", "content", "image_url", "created_at", "author_id"],
+            attributes: ["id", "title", "content1", "content2", "content3", "image_url", "created_at", "author_id", "highlightedContent", "category","views"],
         });
 
         if (!blog) {

@@ -34,6 +34,6 @@ router.get("/all-blogs", authenticate, authorize('manager'), manageController.ge
 router.get("/details-blogs/:blogId", authenticate, authorize('manager'), manageController.getDetailsBlogAdmin)
 router.delete("/delete-blogs/:blogId", authenticate, authorize('manager'), manageController.deleteBlogAdmin)
 router.put("/approve/:blogId", authenticate, authorize('manager'), manageController.approveBlogAdmin)
-
+router.get("/search-blogs", authenticate, authorize('manager'), manageController.searchBlogs)
 
 module.exports = router;

@@ -15,7 +15,15 @@ const Blog = sequelize.define(
       type: DataTypes.STRING(255),
       allowNull: false,
     },
-    content: {
+    content1: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    content2: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    content3: {
       type: DataTypes.TEXT,
       allowNull: false,
     },
@@ -31,6 +39,19 @@ const Blog = sequelize.define(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false, // Mặc định chưa được duyệt
+    },
+    category: {
+      type: DataTypes.STRING, // Thêm trường cho danh mục
+      allowNull: true,
+    },
+    views: {
+      type: DataTypes.INTEGER, // Thêm trường cho số lượt xem
+      allowNull: false,
+      defaultValue: 0, // Mặc định là 0 lượt xem
+    },
+    highlightedContent: {
+      type: DataTypes.TEXT, // Nội dung nổi bật
+      allowNull: true, // Có thể không bắt buộc
     },
     created_at: {
       type: DataTypes.DATE,

@@ -15,6 +15,7 @@ const errorHandler = require("./middlewares/errorHandler");
 const adminRoutes = require('./routes/adminRoutes');
 const manageRoutes = require('./routes/manageRoutes');
 const PaymentRoutes = require('./routes/paymentRoutes');
+const PaymentVNPRoutes = require('./routes/paymentVNPRouter');
 const AddressRoutes = require('./routes/deliveryAddressRoutes');
 const FavoriteRoutes = require('./routes/favorites');
 const { authorize } = require("./middlewares/authMiddleware");
@@ -41,6 +42,7 @@ app.use("/api/category", categoryRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/variants", variantRoutes);
 app.use("/api/payment", PaymentRoutes);
+app.use("/api/payment-vnpay", PaymentVNPRoutes);
 app.use("/api/address", AddressRoutes);
 app.use("/api/favorites", FavoriteRoutes);
 // Route cho quản trị viên (Admin)

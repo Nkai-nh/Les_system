@@ -9,6 +9,7 @@ const Category = require('../models/category');
 const Coupons = require("../models/coupons")
 const Blog = require("../models/blog")
 const sequelize = require('../config/database');
+const moment = require('moment');
 
 //////----------Quản lý người dùng-------------////
 
@@ -610,15 +611,202 @@ async function deleteOrder(req, res) {
 ////////-----------Báo cáo doanh thu---------------///////
 async function getSalesReport(req, res) {
     try {
-        // Giả sử chúng ta tính tổng doanh thu từ bảng Order
-        const totalRevenue = await Order.sum('total'); // là tổng giá trị đơn hàng
+        // Tính tổng doanh thu chỉ cho các đơn hàng có trạng thái 'completed'
+        const totalRevenue = await Order.sum('total', {
+            where: {
+                orderStatus: ['completed', 'confirmed' ]// Điều kiện, ví dụ chỉ lấy doanh thu từ các đơn hàng đã hoàn thành
+            }
+        });
+
         res.json({ totalRevenue });
     } catch (error) {
         res.status(500).json({ message: 'ERROR', error });
     }
 }
+// Hàm lấy tổng số đơn hàng
+async function getTotalOrders(req, res) {
+    console.log("Đang lấy tổng số đơn hàng...");
 
-// Báo cáo doanh thu theo tháng
+    try {
+        const totalOrders = await Order.count();
+        console.log(`Tổng số đơn hàng: ${totalOrders}`);
+
+        // Gửi kết quả về client
+        return res.json({ totalOrders });
+    } catch (error) {
+        console.error("Lỗi khi lấy tổng số đơn hàng:", error.message);
+
+        // Gửi thông báo lỗi về client
+        return res.status(500).json({ message: "Không thể lấy tổng số đơn hàng" });
+    }
+}
+
+// Hàm để lấy tổng số thành viên
+async function getTotalMembers (req, res){
+    try {
+        const count = await User.count(); // Sử dụng Sequelize để đếm số lượng người dùng
+        return res.status(200).json({ totalMembers: count });
+    } catch (error) {
+        console.error("Lỗi khi lấy tổng số thành viên:", error);
+        return res.status(500).json({ message: "Lỗi server" });
+    }
+};
+
+// API Lấy Dữ Liệu Doanh Thu Hàng Tháng
+const getMonthlyRevenue = async (req, res) => {
+    try {
+        const revenueData = await OrderDetail.findAll({
+            attributes: [
+                [sequelize.fn('DATE_FORMAT', sequelize.col('order.createdAt'), '%Y-%m'), 'month'],
+                [sequelize.fn('SUM', sequelize.literal('`OrderDetail`.`quantity` * `OrderDetail`.`price`')), 'revenue']
+            ],
+            group: [sequelize.fn('DATE_FORMAT', sequelize.col('order.createdAt'), '%Y-%m')],
+            order: [[sequelize.fn('DATE_FORMAT', sequelize.col('order.createdAt'), '%Y-%m'), 'ASC']],
+            include: [
+                {
+                    model: Order,
+                    as: 'order',
+                    attributes: []
+                }
+            ],
+            raw: true  // Đảm bảo trả về kết quả thô
+        });
+
+        // Đảm bảo rằng mọi tháng từ tháng đầu tiên tới tháng cuối cùng đều có mặt trong kết quả
+        // Nếu không có doanh thu cho tháng nào, sẽ hiển thị 'revenue' là 0
+        const allMonths = []; // Mảng chứa tất cả các tháng từ năm hiện tại (ví dụ)
+        const currentYear = new Date().getFullYear();
+
+        // Cấu trúc của các tháng từ đầu năm tới tháng hiện tại
+        for (let month = 1; month <= 12; month++) {
+            const formattedMonth = `${currentYear}-${month.toString().padStart(2, '0')}`;
+            allMonths.push({ month: formattedMonth, revenue: '0.00' });
+        }
+
+        // Gộp các tháng với doanh thu từ dữ liệu truy vấn vào kết quả cuối cùng
+        revenueData.forEach(data => {
+            const monthIndex = allMonths.findIndex(m => m.month === data.month);
+            if (monthIndex !== -1) {
+                allMonths[monthIndex].revenue = data.revenue;
+            }
+        });
+
+        return res.status(200).json({ success: true, data: allMonths });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ success: false, message: "Có lỗi xảy ra khi lấy doanh thu hàng tháng", error });
+    }
+};
+
+// API Lấy Dữ Liệu Phân Bổ Doanh Thu
+async function getRevenueDistribution(req, res) {
+    try {
+        // Tính tổng doanh thu từ bảng Orders
+        const totalRevenue = await Order.sum('total', {
+            where: {
+                orderStatus: { [Op.in]: ['completed', 'confirmed'] }
+            }
+        });
+
+        // Phân bổ doanh thu từ OrderDetails
+        const distributionData = await OrderDetail.findAll({
+            attributes: [
+                'product_id',
+                [sequelize.literal('SUM(`OrderDetail`.`quantity` * `OrderDetail`.`price`)'), 'revenue'] // Định danh bảng rõ ràng
+            ],
+            include: [
+                {
+                    model: Product,
+                    attributes: ['prod_name']
+                },
+                {
+                    model: Order,
+                    as: 'order', // Sử dụng alias chính xác
+                    attributes: [],
+                    where: {
+                        orderStatus: { [Op.in]: ['completed', 'confirmed'] }
+                    }
+                }
+            ],
+            group: ['OrderDetail.product_id'],
+            order: [[sequelize.literal('SUM(`OrderDetail`.`quantity` * `OrderDetail`.`price`)'), 'DESC']] // Định danh rõ trong ORDER BY
+        });
+
+        // Tính phần trăm doanh thu
+        const revenueDistribution = distributionData.map(data => ({
+            product_id: data.product_id,
+            prod_name: data.Product.prod_name,
+            revenue: parseFloat(data.getDataValue('revenue')),
+            percentage: totalRevenue ? (parseFloat(data.getDataValue('revenue')) / totalRevenue * 100).toFixed(2) : '0.00'
+        }));
+
+        // Tính tổng tỷ lệ phần trăm
+        const totalPercentage = revenueDistribution.reduce((sum, data) => sum + parseFloat(data.percentage), 0);
+
+        // Điều chỉnh tỷ lệ phần trăm của sản phẩm cuối cùng để tổng bằng 100%
+        const diff = 100 - totalPercentage;
+        if (diff !== 0 && revenueDistribution.length > 0) {
+            revenueDistribution[revenueDistribution.length - 1].percentage = (parseFloat(revenueDistribution[revenueDistribution.length - 1].percentage) + diff).toFixed(2);
+        }
+
+        res.status(200).json({ success: true, revenueDistribution });
+    } catch (error) {
+        console.error('Error in getRevenueDistribution:', error);
+        res.status(500).json({ success: false, message: 'Có lỗi xảy ra khi lấy dữ liệu phân bổ doanh thu', error });
+    }
+}
+
+
+// API Lấy Dữ Liệu Lượng Khách Hàng Hàng Tháng
+async function getMonthlyCustomers(req, res) {
+    try {
+        // Xác định ngày bắt đầu là đầu năm hiện tại
+        const startDate = moment().startOf('year'); // 1 tháng 1 năm hiện tại
+        const endDate = moment(); // Ngày hiện tại
+        const months = [];
+
+        // Tạo danh sách các tháng từ đầu năm đến hiện tại
+        while (startDate.isSameOrBefore(endDate, 'month')) {
+            months.push(startDate.format('YYYY-MM'));
+            startDate.add(1, 'month');
+        }
+
+        // Lấy dữ liệu từ Orders
+        const rawData = await Order.findAll({
+            attributes: [
+                [sequelize.fn('DATE_FORMAT', sequelize.col('createdAt'), '%Y-%m'), 'month'],
+                [sequelize.fn('COUNT', sequelize.fn('DISTINCT', sequelize.col('user_id'))), 'customerCount']
+            ],
+            group: ['month'],
+            order: [['month', 'ASC']],
+            raw: true,
+        });
+
+        // Biến đổi dữ liệu trả về thành object để dễ kết hợp
+        const rawDataMap = rawData.reduce((acc, item) => {
+            acc[item.month] = item.customerCount;
+            return acc;
+        }, {});
+
+        // Kết hợp danh sách tháng với dữ liệu đơn hàng
+        const result = months.map((month) => ({
+            month,
+            customerCount: rawDataMap[month] || 0, // Nếu không có dữ liệu, trả về 0
+        }));
+
+        // Trả kết quả
+        res.status(200).json({ success: true, monthlyCustomers: result });
+    } catch (error) {
+        console.error('Lỗi khi lấy dữ liệu:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Có lỗi xảy ra khi lấy dữ liệu lượng khách hàng hàng tháng',
+            error: error.message || 'Lỗi không xác định',
+        });
+    }
+}
+
+
 async function getMonthlySalesReport(req, res) {
     try {
         const month = req.query.month || new Date().getMonth() + 1; // Tháng hiện tại nếu không cung cấp
@@ -629,7 +817,7 @@ async function getMonthlySalesReport(req, res) {
 
         const monthlyRevenue = await Order.sum('total', {
             where: {
-                created_at: {
+                createdAt: {
                     [Op.gte]: startDate,
                     [Op.lt]: endDate
                 }
@@ -689,6 +877,8 @@ async function getYearlySalesReport(req, res) {
         res.status(500).json({ message: 'Có lỗi xảy ra khi lấy báo cáo doanh thu năm', error });
     }
 }
+
+
 
 
 ///////------------ Báo cáo hoạt động----------////////
@@ -878,7 +1068,7 @@ const deleteCoupon = async (req, res, next) => {
 const  getAllBlogsAdmin = async (req, res, next) => {
     try {
         const blogs = await Blog.findAll({
-            attributes: ["id", "title", "content", "image_url", "is_approved", "created_at", "author_id"],
+            attributes: ["id", "title", "image_url", "is_approved", "content1", "content2", "content3", "created_at", "author_id", "highlightedContent", "category"],
         });
 
         return res.status(200).json(formatResponse("Blogs retrieved successfully", blogs));
@@ -895,7 +1085,7 @@ const getDetailsBlogAdmin = async (req, res, next) => {
     try {
         const blog = await Blog.findOne({
             where: { id: blogId },
-            attributes: ["id", "title", "content", "image_url", "is_approved", "created_at", "author_id"],
+            attributes: ["id", "title", "content1", "content2", "content3", "image_url", "is_approved", "created_at", "author_id", "highlightedContent", "category"],
         });
 
         if (!blog) {
@@ -949,6 +1139,48 @@ const  approveBlogAdmin = async (req, res, next) => {
         return res.status(500).json(formatResponse(false, "Error approving blog"));
     }
 };
+
+// Tìm kiếm bài viết theo tiêu đề
+const searchBlogs = async (req, res, next) => {
+    const { title } = req.query;
+    const { page = 1, limit = 10 } = req.query;  // Pagination parameters (default to page 1 and limit 10)
+
+    // Kiểm tra xem title có được cung cấp không
+    if (!title) {
+        return res.status(400).json(formatResponse(false, "Title is required for searching"));
+    }
+
+    // Kiểm tra quyền truy cập (Admin only)
+    if (!req.user || !req.user.isAdmin) {
+        return res.status(403).json(formatResponse(false, "Access denied"));
+    }
+
+    try {
+        // Tìm kiếm các bài viết có chứa title (case-insensitive)
+        const blogs = await Blog.findAll({
+            where: {
+                title: {
+                    [Op.iLike]: `%${title}%` // Sử dụng iLike cho tìm kiếm không phân biệt chữ hoa/thường (nếu sử dụng PostgreSQL)
+                }
+            },
+            attributes: ["id", "title", "content", "image_url", "is_approved", "created_at", "author_id"],
+            limit: limit,    // Giới hạn số lượng kết quả
+            offset: (page - 1) * limit, // Xử lý phân trang
+        });
+
+        // Kiểm tra nếu không có bài viết nào tìm thấy
+        if (blogs.length === 0) {
+            return res.status(404).json(formatResponse(false, "No blogs found matching the title"));
+        }
+
+        // Trả về kết quả tìm kiếm
+        return res.status(200).json(formatResponse("Blogs retrieved successfully", blogs));
+    } catch (error) {
+        console.error("Error searching blogs:", error);
+        return res.status(500).json(formatResponse(false, "Error searching blogs"));
+    }
+};
+
 module.exports = {
     getAllUsers,
     updateUserRole,
@@ -978,5 +1210,11 @@ module.exports = {
     getAllBlogsAdmin,
     getDetailsBlogAdmin,
     deleteBlogAdmin,
-    approveBlogAdmin
+    approveBlogAdmin,
+    getRevenueDistribution,
+    getMonthlyCustomers,
+    getMonthlyRevenue,
+    getTotalOrders,
+    getTotalMembers,
+    searchBlogs
 };

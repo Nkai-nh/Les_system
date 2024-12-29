@@ -33,9 +33,18 @@ router.delete('/orders/:id',authenticate, authorize('admin'), adminController.de
 
 // Xem báo cáo
 router.get('/reports/sales', authenticate, authorize('admin'), adminController.getSalesReport);
-router.get('/reports/sales/monthly', authenticate, authorize('admin'), adminController.getMonthlySalesReport);
+// Route để lấy tổng số đơn hàng
+router.get('/reports/total-orders', authenticate, authorize('admin'), adminController.getTotalOrders);
+router.get('/reports/total-members', authenticate, authorize('admin'), adminController.getTotalMembers);
+// router.get('/reports/sales/monthly', authenticate, authorize('admin'), adminController.getMonthlySalesReport);
 router.get('/reports/sales/quarterly', authenticate, authorize('admin'), adminController.getQuarterlySalesReport);
 router.get('/reports/sales/yearly', authenticate, authorize('admin'), adminController.getYearlySalesReport);
+router.get('/reports/sales/monthly', authenticate, authorize('admin'), adminController.getMonthlyRevenue); // Lấy doanh thu hàng tháng
+// Router cho phân bổ doanh thu
+router.get('/reports/sales/distribution', authenticate, authorize('admin'), adminController.getRevenueDistribution); // Lấy dữ liệu phân bổ doanh thu
+
+// Router cho lượng khách hàng hàng tháng
+router.get('/reports/customers/monthly', authenticate, authorize('admin'), adminController.getMonthlyCustomers); // Lấy dữ liệu lượng khách hàng hàng tháng
 
 router.get('/reports/activity', authenticate, authorize('admin'), adminController.getActivityReport);
 router.get('/table', authenticate, authorize('admin'), adminController.getAllTables);
@@ -51,6 +60,7 @@ router.get("/all-blogs", authenticate, authorize('admin'), adminController.getAl
 router.get("/details-blogs/:blogId", authenticate, authorize('admin'), adminController.getDetailsBlogAdmin)
 router.delete("/delete-blogs/:blogId", authenticate, authorize('admin'), adminController.deleteBlogAdmin)
 router.put("/approve/:blogId", authenticate, authorize('admin'), adminController.approveBlogAdmin)
+router.get("/search-blogs", authenticate, authorize('admin'), adminController.searchBlogs)
 
 
 module.exports = router;
